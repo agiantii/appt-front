@@ -1,0 +1,8 @@
+{
+  "name": "Slidev Intelligence",
+  "description": "A collaborative Slidev-based platform with AI assistance, real-time editing, and advanced file management.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
