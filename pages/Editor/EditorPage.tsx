@@ -378,8 +378,6 @@ const EditorPage: React.FC = () => {
            </div>
         </div>
         <div className="flex items-center gap-4">
-           <span>UTF-8</span>
-           <span>Markdown</span>
            <span className="text-white/60">Ln {content.split('\n').length}, Col {content.length}</span>
         </div>
       </div>

@@ -1,23 +1,41 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { Settings, Plus, Search, Filter, LayoutGrid, List, ArrowLeft, MoreVertical as MoreIcon, ChevronRight, Share2, FolderOpen } from 'lucide-react';
+import { Settings, Plus, Search, Filter, LayoutGrid, List, ArrowLeft, MoreVertical as MoreIcon, ChevronRight, ChevronDown, Share2, FolderOpen, FileText, Zap as ZapIcon } from 'lucide-react';
 import { mockSlideSpaces, mockSlides } from '../../data/mock';
 import FileTree from '../../components/SpaceTree/FileTree';
-import { Slide } from '../../types';
+import { Slide, FileTreeNode } from '../../types';
 
 const SpaceDetail: React.FC = () => {
   const { slideSpaceId } = useParams();
   const navigate = useNavigate();
   const space = mockSlideSpaces.find(s => s.id === Number(slideSpaceId));
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
   const [slides, setSlides] = useState<Slide[]>(mockSlides);
   const [searchQuery, setSearchQuery] = useState("");
+  const [expandedNodes, setExpandedNodes] = useState<Record<number, boolean>>({});
 
   useEffect(() => {
     const filtered = mockSlides.filter(s => s.slide_space_id === Number(slideSpaceId));
     setSlides(filtered);
+    // Expand all by default for the main view
+    const initialExpanded: Record<number, boolean> = {};
+    filtered.forEach(s => initialExpanded[s.id] = true);
+    setExpandedNodes(initialExpanded);
   }, [slideSpaceId]);
+
+  const treeData = useMemo(() => {
+    const buildTree = (nodes: Slide[], parentId: number | null = null): FileTreeNode[] => {
+      return nodes
+        .filter(node => node.parent_id === parentId)
+        .sort((a, b) => a.title.localeCompare(b.title, undefined, { numeric: true }))
+        .map(node => ({
+          ...node,
+          children: buildTree(nodes, node.id)
+        }));
+    };
+    return buildTree(slides.filter(s => s.title.toLowerCase().includes(searchQuery.toLowerCase())));
+  }, [slides, searchQuery]);
 
   if (!space) return (
     <div className="flex items-center justify-center h-full text-white/40">
@@ -48,13 +66,50 @@ const SpaceDetail: React.FC = () => {
     navigate(`/slide/${slideSpaceId}/${newId}`);
   };
 
-  const filteredSlides = slides.filter(s => 
-    s.title.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const toggleNode = (id: number) => {
+    setExpandedNodes(prev => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const TreeRow: React.FC<{ node: FileTreeNode; level: number }> = ({ node, level }) => {
+    const isExpanded = expandedNodes[node.id];
+    const hasChildren = node.children && node.children.length > 0;
+
+    return (
+      <div className="flex flex-col">
+        <div 
+          className="group flex items-center hover:bg-white/[0.03] transition-colors py-2 px-4 cursor-pointer"
+          style={{ paddingLeft: `${level * 24 + 16}px` }}
+          onClick={() => hasChildren ? toggleNode(node.id) : navigate(`/slide/${slideSpaceId}/${node.id}`)}
+        >
+          <div className="flex items-center gap-3 flex-1 min-w-0">
+            {hasChildren ? (
+              isExpanded ? <ChevronDown className="w-3.5 h-3.5 text-white/40" /> : <ChevronRight className="w-3.5 h-3.5 text-white/40" />
+            ) : (
+              <FileText className="w-3.5 h-3.5 text-white/20" />
+            )}
+            <span className={`text-sm ${hasChildren ? 'text-white/80 font-medium' : 'text-white/60'} truncate`}>
+              {node.title}
+            </span>
+            <div className="flex-1 border-b border-dotted border-white/5 mx-4 min-w-[20px]" />
+          </div>
+          <div className="text-[11px] font-mono text-white/20 group-hover:text-white/40 transition-colors whitespace-nowrap">
+            {node.updated_at}
+          </div>
+        </div>
+        {hasChildren && isExpanded && (
+          <div className="flex flex-col">
+            {node.children!.map(child => (
+              <TreeRow key={child.id} node={child} level={level + 1} />
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="flex h-screen bg-[#09090b] text-white">
-      {/* Space Sidebar - iOS Glass Effect */}
+      {/* Space Sidebar */}
       <aside className="w-80 border-r border-white/5 flex flex-col bg-[#0c0c0e] relative z-20">
         <div className="p-8 pb-4">
           <Link to="/dashboard" className="flex items-center gap-3 text-white/30 hover:text-white text-xs font-black uppercase tracking-widest transition-all mb-10 group">
@@ -149,15 +204,25 @@ const SpaceDetail: React.FC = () => {
           </div>
         </header>
 
-        <div className="p-12">
-          {filteredSlides.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-80 text-white/5 border border-dashed border-white/10 rounded-[48px] animate-pulse">
-              <Search className="w-20 h-20 mb-6 stroke-[1px]" />
-              <p className="text-lg font-black uppercase tracking-widest">Workspace is silent</p>
+        <div className="p-8">
+          {viewMode === 'list' ? (
+            <div className="max-w-5xl mx-auto py-8">
+              {treeData.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-80 text-white/5 border border-dashed border-white/10 rounded-[48px]">
+                  <Search className="w-20 h-20 mb-6 stroke-[1px]" />
+                  <p className="text-lg font-black uppercase tracking-widest">Workspace is silent</p>
+                </div>
+              ) : (
+                <div className="space-y-0.5">
+                  {treeData.map(node => (
+                    <TreeRow key={node.id} node={node} level={0} />
+                  ))}
+                </div>
+              )}
             </div>
           ) : (
-            <div className={`grid ${viewMode === 'grid' ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4' : 'grid-cols-1'} gap-10`}>
-              {filteredSlides.map(slide => (
+            <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-10`}>
+              {slides.filter(s => s.title.toLowerCase().includes(searchQuery.toLowerCase())).map(slide => (
                 <Link 
                   key={slide.id}
                   to={`/slide/${slideSpaceId}/${slide.id}`}
@@ -173,7 +238,7 @@ const SpaceDetail: React.FC = () => {
                        {slide.content.slice(0, 800)}
                      </div>
                      <div className="absolute inset-0 bg-gradient-to-t from-[#0c0c0e] via-transparent to-transparent opacity-40" />
-                     <Zap className="absolute w-12 h-12 text-white/5 group-hover:text-white/10 transition-all group-hover:scale-110 group-hover:rotate-6" />
+                     <ZapIcon className="absolute w-12 h-12 text-white/5 group-hover:text-white/10 transition-all group-hover:scale-110 group-hover:rotate-6" />
                   </div>
                   <div className="p-8">
                     <h3 className="font-black text-xl text-white/90 group-hover:text-white transition-colors truncate mb-4" title={slide.title}>{slide.title}</h3>
@@ -184,7 +249,6 @@ const SpaceDetail: React.FC = () => {
                       </div>
                       <div className="flex -space-x-2">
                         <img src={`https://api.dicebear.com/7.x/initials/svg?seed=${slide.id}`} className="w-7 h-7 rounded-full border-2 border-[#0c0c0e]" />
-                        <img src={`https://api.dicebear.com/7.x/initials/svg?seed=${slide.id + 10}`} className="w-7 h-7 rounded-full border-2 border-[#0c0c0e]" />
                       </div>
                     </div>
                   </div>
@@ -193,13 +257,10 @@ const SpaceDetail: React.FC = () => {
             </div>
           )}
         </div>
+
       </main>
     </div>
   );
 };
-
-const Zap = ({ className }: { className?: string }) => (
-  <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-);
 
 export default SpaceDetail;
