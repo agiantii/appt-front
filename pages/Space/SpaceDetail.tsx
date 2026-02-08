@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { Settings, Plus, Search, Filter, LayoutGrid, List, ArrowLeft, MoreVertical as MoreIcon } from 'lucide-react';
+import { Settings, Plus, Search, Filter, LayoutGrid, List, ArrowLeft, MoreVertical as MoreIcon, ChevronRight, Share2, FolderOpen } from 'lucide-react';
 import { mockSlideSpaces, mockSlides } from '../../data/mock';
 import FileTree from '../../components/SpaceTree/FileTree';
 import { Slide } from '../../types';
@@ -15,7 +15,6 @@ const SpaceDetail: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
-    // Filter initial data based on space
     const filtered = mockSlides.filter(s => s.slide_space_id === Number(slideSpaceId));
     setSlides(filtered);
   }, [slideSpaceId]);
@@ -34,8 +33,8 @@ const SpaceDetail: React.FC = () => {
     const newId = Math.max(0, ...slides.map(s => s.id)) + 1;
     const newSlide: Slide = {
       id: newId,
-      title: 'Untitled Slide',
-      content: '---\ntheme: seriph\n---\n# New Slide\nStart editing...',
+      title: 'Untitled Presentation',
+      content: '---\ntheme: seriph\n---\n# New Content\nStart typing...',
       slide_space_id: Number(slideSpaceId),
       parent_id: parentId,
       is_public: false,
@@ -46,7 +45,6 @@ const SpaceDetail: React.FC = () => {
     
     const updated = [...slides, newSlide];
     setSlides(updated);
-    // Automatically navigate to editor for new slide
     navigate(`/slide/${slideSpaceId}/${newId}`);
   };
 
@@ -55,23 +53,26 @@ const SpaceDetail: React.FC = () => {
   );
 
   return (
-    <div className="flex h-screen bg-[#09090b]">
-      {/* Space Sidebar */}
-      <aside className="w-72 border-r border-white/5 flex flex-col bg-[#0c0c0e]">
-        <div className="p-6">
-          <Link to="/dashboard" className="flex items-center gap-2 text-white/40 hover:text-white text-sm transition-colors mb-6 group">
-            <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" /> Back
+    <div className="flex h-screen bg-[#09090b] text-white">
+      {/* Space Sidebar - iOS Glass Effect */}
+      <aside className="w-80 border-r border-white/5 flex flex-col bg-[#0c0c0e] relative z-20">
+        <div className="p-8 pb-4">
+          <Link to="/dashboard" className="flex items-center gap-3 text-white/30 hover:text-white text-xs font-black uppercase tracking-widest transition-all mb-10 group">
+            <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+            Home
           </Link>
-          <div className="flex items-center justify-between mb-2">
-            <h1 className="text-xl font-bold tracking-tight text-white/90 truncate mr-2" title={space.name}>{space.name}</h1>
-            <Link to={`/slide/${slideSpaceId}/settings`} className="p-1.5 hover:bg-white/5 rounded-lg text-white/40 hover:text-white transition-all">
+          <div className="flex items-start justify-between mb-2">
+            <div className="flex flex-col min-w-0">
+               <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em] mb-1">Active Space</span>
+               <h1 className="text-2xl font-black tracking-tight text-white/90 truncate pr-2" title={space.name}>{space.name}</h1>
+            </div>
+            <Link to={`/slide/${slideSpaceId}/settings`} className="p-2.5 bg-white/5 border border-white/10 hover:bg-white/10 rounded-2xl text-white/40 hover:text-white transition-all">
               <Settings className="w-4 h-4" />
             </Link>
           </div>
-          <p className="text-xs text-white/30 line-clamp-2 leading-relaxed">{space.description}</p>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-3 py-2 custom-scrollbar">
+        <div className="flex-1 overflow-y-auto px-4 custom-scrollbar">
           <FileTree 
             data={slides} 
             onUpdate={handleUpdateSlides} 
@@ -81,88 +82,117 @@ const SpaceDetail: React.FC = () => {
           />
         </div>
 
-        <div className="p-4 border-t border-white/5">
+        <div className="p-6 border-t border-white/5 bg-[#0c0c0e]/80 backdrop-blur-md">
           <button 
             onClick={() => handleAddSlide(null)}
-            className="w-full flex items-center justify-center gap-2 py-3 bg-white text-black rounded-xl text-sm font-bold hover:bg-white/90 transition-all shadow-xl shadow-white/5 group"
+            className="w-full flex items-center justify-center gap-3 py-4 bg-white text-black rounded-[20px] text-xs font-black uppercase tracking-widest hover:bg-white/90 transition-all shadow-2xl shadow-white/5 group active:scale-95"
           >
-            <Plus className="w-4 h-4 group-hover:rotate-90 transition-transform" /> New Slide
+            <Plus className="w-4 h-4 stroke-[3px]" />
+            New Document
           </button>
         </div>
       </aside>
 
       {/* Content Area */}
-      <main className="flex-1 overflow-y-auto p-8 custom-scrollbar">
-        <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-10">
-          <div className="relative w-full max-w-md">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20" />
-            <input 
-              type="text" 
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search documents..."
-              className="w-full bg-white/5 border border-white/10 rounded-2xl py-2.5 pl-11 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-white/10 transition-all text-white placeholder:text-white/20"
-            />
+      <main className="flex-1 overflow-y-auto bg-[#09090b] relative flex flex-col">
+        <header className="sticky top-0 z-10 bg-[#09090b]/80 backdrop-blur-xl border-b border-white/5 p-8 flex flex-col gap-8">
+          <div className="flex items-center justify-between">
+             <div className="flex items-center gap-3 text-[10px] font-black text-white/30 uppercase tracking-[0.2em]">
+                <FolderOpen className="w-4 h-4" />
+                <span>Spaces</span>
+                <ChevronRight className="w-3 h-3" />
+                <span className="text-white/70">{space.name}</span>
+             </div>
+             <div className="flex items-center gap-3">
+                <div className="flex -space-x-3 mr-4">
+                  {[1,2,3].map(i => (
+                    <img key={i} src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${i}`} className="w-8 h-8 rounded-full border-4 border-[#09090b]" />
+                  ))}
+                </div>
+                <button className="flex items-center gap-2 px-5 py-2.5 bg-white/5 border border-white/10 rounded-2xl text-[10px] font-black uppercase tracking-widest text-white/40 hover:text-white transition-all">
+                   <Share2 className="w-4 h-4" />
+                   Invite
+                </button>
+             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <div className="bg-white/5 p-1 rounded-xl flex border border-white/10">
-              <button 
-                onClick={() => setViewMode('grid')}
-                className={`p-2 rounded-lg transition-all ${viewMode === 'grid' ? 'bg-white/10 text-white shadow-sm' : 'text-white/30 hover:text-white/50'}`}
-              >
-                <LayoutGrid className="w-4 h-4" />
-              </button>
-              <button 
-                onClick={() => setViewMode('list')}
-                className={`p-2 rounded-lg transition-all ${viewMode === 'list' ? 'bg-white/10 text-white shadow-sm' : 'text-white/30 hover:text-white/50'}`}
-              >
-                <List className="w-4 h-4" />
+
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div className="relative w-full max-w-xl group">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/20 group-focus-within:text-white transition-colors" />
+              <input 
+                type="text" 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search presentations, templates, nodes..."
+                className="w-full bg-[#18181b] border border-white/5 rounded-2xl py-3.5 pl-12 pr-6 text-sm focus:outline-none focus:ring-4 focus:ring-white/5 transition-all text-white placeholder:text-white/20"
+              />
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="bg-[#18181b] p-1.5 rounded-2xl flex border border-white/5">
+                <button 
+                  onClick={() => setViewMode('grid')}
+                  className={`p-2 rounded-xl transition-all ${viewMode === 'grid' ? 'bg-white text-black shadow-xl' : 'text-white/20 hover:text-white/40'}`}
+                >
+                  <LayoutGrid className="w-5 h-5" />
+                </button>
+                <button 
+                  onClick={() => setViewMode('list')}
+                  className={`p-2 rounded-xl transition-all ${viewMode === 'list' ? 'bg-white text-black shadow-xl' : 'text-white/20 hover:text-white/40'}`}
+                >
+                  <List className="w-5 h-5" />
+                </button>
+              </div>
+              <button className="flex items-center gap-3 px-6 py-3 bg-[#18181b] hover:bg-white/10 border border-white/5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all text-white/40 hover:text-white">
+                <Filter className="w-4 h-4" /> Sort: Recently Edited
               </button>
             </div>
-            <button className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-sm font-medium transition-all text-white/60">
-              <Filter className="w-4 h-4" /> Filter
-            </button>
           </div>
         </header>
 
-        {filteredSlides.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-64 text-white/20 border border-dashed border-white/5 rounded-3xl">
-            <Search className="w-12 h-12 mb-4 opacity-10" />
-            <p className="text-sm font-medium">No documents found matching your search</p>
-          </div>
-        ) : (
-          <div className={`grid ${viewMode === 'grid' ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4' : 'grid-cols-1'} gap-6`}>
-            {filteredSlides.map(slide => (
-              <Link 
-                key={slide.id}
-                to={`/slide/${slideSpaceId}/${slide.id}`}
-                className={`group bg-[#18181b] border border-white/5 rounded-2xl overflow-hidden hover:border-white/20 transition-all flex flex-col shadow-sm hover:shadow-xl hover:shadow-white/5`}
-              >
-                <div className="aspect-video bg-[#242427] relative group-hover:bg-[#2a2a2e] transition-colors flex items-center justify-center overflow-hidden">
-                   <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                      <button className="p-1.5 bg-black/60 rounded-lg backdrop-blur-md border border-white/10 hover:bg-black transition-colors" onClick={(e) => e.preventDefault()}>
-                        <MoreIcon className="w-4 h-4 text-white/60" />
-                      </button>
-                   </div>
-                   <div className="p-6 text-[8px] font-mono text-white/5 group-hover:text-white/10 transition-colors select-none">
-                     {slide.content.slice(0, 400)}...
-                   </div>
-                   <Zap className="absolute w-8 h-8 text-white/5 group-hover:text-white/20 transition-all group-hover:scale-125 group-hover:rotate-12" />
-                </div>
-                <div className="p-5">
-                  <h3 className="font-bold text-white/80 group-hover:text-white transition-colors truncate mb-3" title={slide.title}>{slide.title}</h3>
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] text-white/30 font-bold uppercase tracking-wider">Edited {slide.updated_at}</span>
-                    <div className="flex -space-x-1.5">
-                      <img src="https://picsum.photos/seed/u1/20/20" className="w-5 h-5 rounded-full border-2 border-[#18181b]" />
-                      <img src="https://picsum.photos/seed/u2/20/20" className="w-5 h-5 rounded-full border-2 border-[#18181b]" />
+        <div className="p-12">
+          {filteredSlides.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-80 text-white/5 border border-dashed border-white/10 rounded-[48px] animate-pulse">
+              <Search className="w-20 h-20 mb-6 stroke-[1px]" />
+              <p className="text-lg font-black uppercase tracking-widest">Workspace is silent</p>
+            </div>
+          ) : (
+            <div className={`grid ${viewMode === 'grid' ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4' : 'grid-cols-1'} gap-10`}>
+              {filteredSlides.map(slide => (
+                <Link 
+                  key={slide.id}
+                  to={`/slide/${slideSpaceId}/${slide.id}`}
+                  className={`group bg-[#0c0c0e] border border-white/5 rounded-[40px] overflow-hidden hover:border-white/20 transition-all flex flex-col shadow-lg hover:shadow-[0_40px_80px_-20px_rgba(0,0,0,0.6)] relative`}
+                >
+                  <div className="aspect-[16/10] bg-[#18181b] relative group-hover:bg-[#1c1c1f] transition-colors flex items-center justify-center overflow-hidden">
+                     <div className="absolute top-5 right-5 opacity-0 group-hover:opacity-100 transition-all duration-300 z-10 translate-y-2 group-hover:translate-y-0">
+                        <button className="p-3 bg-black/80 rounded-2xl backdrop-blur-xl border border-white/10 hover:bg-white hover:text-black transition-all" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
+                          <MoreIcon className="w-5 h-5" />
+                        </button>
+                     </div>
+                     <div className="p-10 text-[6px] font-mono text-white/5 group-hover:text-white/10 transition-all duration-700 select-none scale-110 group-hover:scale-100">
+                       {slide.content.slice(0, 800)}
+                     </div>
+                     <div className="absolute inset-0 bg-gradient-to-t from-[#0c0c0e] via-transparent to-transparent opacity-40" />
+                     <Zap className="absolute w-12 h-12 text-white/5 group-hover:text-white/10 transition-all group-hover:scale-110 group-hover:rotate-6" />
+                  </div>
+                  <div className="p-8">
+                    <h3 className="font-black text-xl text-white/90 group-hover:text-white transition-colors truncate mb-4" title={slide.title}>{slide.title}</h3>
+                    <div className="flex items-center justify-between">
+                      <div className="flex flex-col">
+                        <span className="text-[10px] text-white/20 font-black uppercase tracking-widest">Last Update</span>
+                        <span className="text-xs font-bold text-white/40">{slide.updated_at}</span>
+                      </div>
+                      <div className="flex -space-x-2">
+                        <img src={`https://api.dicebear.com/7.x/initials/svg?seed=${slide.id}`} className="w-7 h-7 rounded-full border-2 border-[#0c0c0e]" />
+                        <img src={`https://api.dicebear.com/7.x/initials/svg?seed=${slide.id + 10}`} className="w-7 h-7 rounded-full border-2 border-[#0c0c0e]" />
+                      </div>
                     </div>
                   </div>
-                </div>
-              </Link>
-            ))}
-          </div>
-        )}
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
       </main>
     </div>
   );

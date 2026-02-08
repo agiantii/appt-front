@@ -23,6 +23,7 @@ export interface SlideSpace {
   name: string;
   description: string;
   url: string;
+  owner_id: string;
 }
 
 export interface FileTreeNode extends Slide {
@@ -30,3 +31,10 @@ export interface FileTreeNode extends Slide {
 }
 
 export type SidebarTab = 'explorer' | 'git' | 'comments' | 'ai';
+
+export interface SlidePageInfo {
+  index: number;
+  title: string;
+  preview: string;
+  lineStart: number;
+}
