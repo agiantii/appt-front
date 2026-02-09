@@ -1,5 +1,5 @@
 
-import { Slide, SlideSpace, User } from '../types';
+import { Slide, SlideSpace, User, Snippet } from '../types';
 
 export const mockUser: User = {
   id: 'user-1',
@@ -29,6 +29,12 @@ export const mockSlides: Slide[] = [
   { id: 2, title: 'Features Deep Dive', content: '---\nlayout: center\n---\n# Key Features\n- Real-time collaboration\n- AI Assistant\n- VS Code integration', slide_space_id: 1, parent_id: 1, is_public: false, allow_comment: true, created_at: '2024-01-02', updated_at: '2024-01-02' },
   { id: 3, title: 'Pricing Table', content: '# Pricing Models\nCompare our basic vs pro plans.', slide_space_id: 1, parent_id: 1, is_public: false, allow_comment: false, created_at: '2024-01-03', updated_at: '2024-01-03' },
   { id: 4, title: 'Executive Overview', content: '# Executive Summary\nSummary for the stakeholders.', slide_space_id: 1, parent_id: null, is_public: true, allow_comment: true, created_at: '2024-01-04', updated_at: '2024-01-04' },
+];
+
+export const mockSnippets: Snippet[] = [
+  { id: 's1', name: 'Standard Layout', code: '---\nlayout: center\n---\n# Title\nContent...', language: 'markdown' },
+  { id: 's2', name: 'Glass Card Style', code: '.slidev-layout {\n  background: rgba(255, 255, 255, 0.1);\n  backdrop-filter: blur(10px);\n}', language: 'css' },
+  { id: 's3', name: 'Fetch API Helper', code: 'async function fetchData(url) {\n  const res = await fetch(url);\n  return res.json();\n}', language: 'javascript' },
 ];
 
 export const exploreItems = [

@@ -26,11 +26,18 @@ export interface SlideSpace {
   owner_id: string;
 }
 
+export interface Snippet {
+  id: string;
+  name: string;
+  code: string;
+  language: string;
+}
+
 export interface FileTreeNode extends Slide {
   children?: FileTreeNode[];
 }
 
-export type SidebarTab = 'explorer' | 'git' | 'comments' | 'ai';
+export type SidebarTab = 'explorer' | 'git' | 'comments' | 'ai' | 'snippets';
 
 export interface SlidePageInfo {
   index: number;

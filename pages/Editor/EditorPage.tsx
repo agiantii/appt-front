@@ -27,10 +27,11 @@ import {
   ChevronDown,
   Layout,
   ArrowUp,
-  ArrowDown
+  ArrowDown,
+  Code
 } from 'lucide-react';
-import { mockSlides, mockUser } from '../../data/mock';
-import { SidebarTab, Slide, SlidePageInfo } from '../../types';
+import { mockSlides, mockUser, mockSnippets } from '../../data/mock';
+import { SidebarTab, Slide, SlidePageInfo, Snippet } from '../../types';
 import FileTree from '../../components/SpaceTree/FileTree';
 import ResizableLayout from '../../components/Editor/ResizablePanels';
 import { GoogleGenAI } from '@google/genai';
@@ -54,6 +55,8 @@ import {
   markdownLanguage 
 } from '@codemirror/lang-markdown';
 import { html } from '@codemirror/lang-html';
+import { css } from '@codemirror/lang-css';
+import { javascript } from '@codemirror/lang-javascript';
 import { languages } from '@codemirror/language-data';
 import { tags as t } from '@lezer/highlight';
 import { 
@@ -179,6 +182,10 @@ const EditorPage: React.FC = () => {
   const [chatInput, setChatInput] = useState('');
   const [chatHistory, setChatHistory] = useState<{role: 'user'|'ai', text: string}[]>([]);
   const [previewMode, setPreviewMode] = useState<'dev' | 'build'>('dev');
+  const [snippets] = useState<Snippet[]>(() => {
+    const saved = localStorage.getItem('user-snippets');
+    return saved ? JSON.parse(saved) : mockSnippets;
+  });
   
   const [outlineHeight, setOutlineHeight] = useState(240);
 
@@ -192,6 +199,8 @@ const EditorPage: React.FC = () => {
         ...manualBasicSetup,
         markdown({ base: markdownLanguage, codeLanguages: languages }),
         html(),
+        css(),
+        javascript(),
         slidevDarkTheme,
         syntaxHighlighting(slidevHighlightStyle),
         EditorView.updateListener.of((update) => {
@@ -323,6 +332,18 @@ const EditorPage: React.FC = () => {
     }
   };
 
+  const insertSnippet = (code: string) => {
+    if (editorViewRef.current) {
+      const { state, dispatch } = editorViewRef.current;
+      const range = state.selection.main;
+      dispatch({
+        changes: { from: range.from, to: range.to, insert: code },
+        selection: { anchor: range.from + code.length }
+      });
+      editorViewRef.current.focus();
+    }
+  };
+
   const handleAddSlide = (parentId: number | null = null) => {
     const newId = Math.max(0, ...slides.map(s => s.id)) + 1;
     const newSlide: Slide = {
@@ -388,6 +409,29 @@ const EditorPage: React.FC = () => {
             onAddChild={handleAddSlide}
             onAddRoot={() => handleAddSlide(null)}
           />
+        )}
+        {activeTab === 'snippets' && (
+          <div className="p-2 space-y-2">
+            <div className="flex items-center justify-between px-2 mb-2">
+              <span className="text-[10px] font-bold text-white/30 uppercase tracking-widest">Saved Snippets</span>
+              <Link to="/settings/snippets" className="text-[10px] text-white/20 hover:text-white transition-colors underline">Manage</Link>
+            </div>
+            {snippets.map(s => (
+              <button 
+                key={s.id}
+                onClick={() => insertSnippet(s.code)}
+                className="w-full bg-white/5 border border-white/5 hover:border-white/10 p-3 rounded-xl text-left group transition-all"
+              >
+                <div className="flex justify-between items-center mb-1.5">
+                  <span className="text-xs font-bold text-white/80 group-hover:text-white">{s.name}</span>
+                  <span className="text-[8px] font-black uppercase text-white/20">{s.language}</span>
+                </div
+                <div className="bg-black/20 p-2 rounded-lg text-[8px] font-mono text-white/30 truncate group-hover:text-white/50">
+                  {s.code.slice(0, 50)}...
+                </div>
+              </button>
+            ))}
+          </div>
         )}
         {activeTab === 'git' && (
           <div className="p-4 space-y-4">
@@ -503,7 +547,7 @@ const EditorPage: React.FC = () => {
 
   const previewRight = (
     <>
-      <div className="h-10 border-b border-white/5 flex items-center justify-between px-4 bg-[#09090b]">
+      <div className="h-10 border-b border-white/5 flex items-centera justify-between px-4 bg-[#09090b]">
         <div className="flex gap-1.5 bg-white/5 p-1 rounded-xl">
           <button 
             onClick={() => setPreviewMode('dev')}
@@ -608,6 +652,13 @@ const EditorPage: React.FC = () => {
         >
           <Files className="w-6 h-6" />
           {activeTab === 'explorer' && sidebarOpen && <div className="absolute -left-1.5 top-1/2 -translate-y-1/2 w-1 h-6 bg-white rounded-r-full shadow-[0_0_12px_white]" />}
+        </button>
+        <button 
+          onClick={() => { setActiveTab('snippets'); setSidebarOpen(true); }}
+          className={`p-3 transition-all relative rounded-2xl ${activeTab === 'snippets' && sidebarOpen ? 'text-white bg-white/10 shadow-[0_0_20px_rgba(255,255,255,0.05)]' : 'text-white/30 hover:text-white hover:bg-white/5'}`}
+        >
+          <Code className="w-6 h-6" />
+          {activeTab === 'snippets' && sidebarOpen && <div className="absolute -left-1.5 top-1/2 -translate-y-1/2 w-1 h-6 bg-white rounded-r-full shadow-[0_0_12px_white]" />}
         </button>
         <button 
           onClick={() => { setActiveTab('git'); setSidebarOpen(true); }}

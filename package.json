@@ -14,6 +14,7 @@
     "react-dom": "^19.2.4",
     "lucide-react": "^0.563.0",
     "@google/genai": "^1.40.0",
+    "codemirror": "^6.0.1",
     "@codemirror/view": "^6.0.0",
     "@codemirror/state": "^6.0.0",
     "@codemirror/language": "^6.0.0",
@@ -21,6 +22,8 @@
     "@codemirror/search": "^6.0.0",
     "@codemirror/lang-markdown": "^6.0.0",
     "@codemirror/lang-html": "^6.0.0",
+    "@codemirror/lang-javascript": "^6.0.0",
+    "@codemirror/lang-css": "^6.0.0",
     "@codemirror/autocomplete": "^6.0.0",
     "@lezer/highlight": "^1.0.0",
     "@codemirror/language-data": "^6.5.2"
