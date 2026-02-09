@@ -30,7 +30,6 @@ export interface Snippet {
   id: string;
   name: string;
   code: string;
-  language: string;
 }
 
 export interface FileTreeNode extends Slide {

@@ -32,9 +32,26 @@ export const mockSlides: Slide[] = [
 ];
 
 export const mockSnippets: Snippet[] = [
-  { id: 's1', name: 'Standard Layout', code: '---\nlayout: center\n---\n# Title\nContent...', language: 'markdown' },
-  { id: 's2', name: 'Glass Card Style', code: '.slidev-layout {\n  background: rgba(255, 255, 255, 0.1);\n  backdrop-filter: blur(10px);\n}', language: 'css' },
-  { id: 's3', name: 'Fetch API Helper', code: 'async function fetchData(url) {\n  const res = await fetch(url);\n  return res.json();\n}', language: 'javascript' },
+  { 
+    id: 's1', 
+    name: 'Slidev: Center Layout', 
+    code: '---\nlayout: center\n---\n# Title\nContent goes here...' 
+  },
+  { 
+    id: 's2', 
+    name: 'Slidev: Two Columns', 
+    code: '---\nlayout: two-cols\n---\n# Title\n\n::left::\nLeft content\n\n::right::\nRight content' 
+  },
+  { 
+    id: 's3', 
+    name: 'Vue: Counter Component', 
+    code: '<script setup>\nimport { ref } from "vue"\nconst count = ref(0)\n</script>\n\n<template>\n  <button @click="count++">{{ count }}</button>\n</template>' 
+  },
+  { 
+    id: 's4', 
+    name: 'Slidev: Click Animations', 
+    code: '<ul>\n  <li v-click>First item</li>\n  <li v-click>Second item</li>\n  <li v-click>Third item</li>\n</ul>' 
+  }
 ];
 
 export const exploreItems = [

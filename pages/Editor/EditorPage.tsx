@@ -81,37 +81,9 @@ import {
   autocompletion, 
   completionKeymap, 
   closeBrackets, 
-  closeBracketsKeymap 
+  closeBracketsKeymap,
+  CompletionContext
 } from '@codemirror/autocomplete';
-
-// Replicating basicSetup manually to avoid the 'codemirror' package aggregator issues
-const manualBasicSetup = [
-  lineNumbers(),
-  highlightActiveLineGutter(),
-  highlightSpecialChars(),
-  history(),
-  foldGutter(),
-  drawSelection(),
-  dropCursor(),
-  EditorState.allowMultipleSelections.of(true),
-  indentOnInput(),
-  syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
-  bracketMatching(),
-  closeBrackets(),
-  autocompletion(),
-  rectangularSelection(),
-  crosshairCursor(),
-  highlightActiveLine(),
-  highlightSelectionMatches(),
-  keymap.of([
-    ...closeBracketsKeymap,
-    ...defaultKeymap,
-    ...searchKeymap,
-    ...historyKeymap,
-    ...foldKeymap,
-    ...completionKeymap,
-  ]),
-];
 
 // Custom Slidev Dark Theme for CodeMirror
 const slidevDarkTheme = EditorView.theme({
@@ -182,12 +154,58 @@ const EditorPage: React.FC = () => {
   const [chatInput, setChatInput] = useState('');
   const [chatHistory, setChatHistory] = useState<{role: 'user'|'ai', text: string}[]>([]);
   const [previewMode, setPreviewMode] = useState<'dev' | 'build'>('dev');
-  const [snippets] = useState<Snippet[]>(() => {
+  
+  const snippets = useMemo<Snippet[]>(() => {
     const saved = localStorage.getItem('user-snippets');
     return saved ? JSON.parse(saved) : mockSnippets;
-  });
+  }, []);
   
   const [outlineHeight, setOutlineHeight] = useState(240);
+
+  // Custom Snippet completion source
+  const snippetCompletionSource = (context: CompletionContext) => {
+    const word = context.matchBefore(/\w*/);
+    if (!word || (word.from === word.to && !context.explicit)) return null;
+
+    return {
+      from: word.from,
+      options: snippets.map(s => ({
+        label: s.name,
+        type: "text",
+        detail: "Snippet",
+        apply: s.code
+      }))
+    };
+  };
+
+  // Replicating basicSetup manually
+  const manualBasicSetup = useMemo(() => [
+    lineNumbers(),
+    highlightActiveLineGutter(),
+    highlightSpecialChars(),
+    history(),
+    foldGutter(),
+    drawSelection(),
+    dropCursor(),
+    EditorState.allowMultipleSelections.of(true),
+    indentOnInput(),
+    syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
+    bracketMatching(),
+    closeBrackets(),
+    autocompletion({ override: [snippetCompletionSource] }), // Use custom completions
+    rectangularSelection(),
+    crosshairCursor(),
+    highlightActiveLine(),
+    highlightSelectionMatches(),
+    keymap.of([
+      ...closeBracketsKeymap,
+      ...defaultKeymap,
+      ...searchKeymap,
+      ...historyKeymap,
+      ...foldKeymap,
+      ...completionKeymap,
+    ]),
+  ], [snippets]);
 
   // Initialize CodeMirror
   useEffect(() => {
@@ -221,7 +239,7 @@ const EditorPage: React.FC = () => {
     return () => {
       view.destroy();
     };
-  }, []); // Only init once
+  }, [manualBasicSetup]); // Re-init if setup changes (snippets update)
 
   // Sync content if changed from outside (e.g., slide selection)
   useEffect(() => {
@@ -413,7 +431,7 @@ const EditorPage: React.FC = () => {
         {activeTab === 'snippets' && (
           <div className="p-2 space-y-2">
             <div className="flex items-center justify-between px-2 mb-2">
-              <span className="text-[10px] font-bold text-white/30 uppercase tracking-widest">Saved Snippets</span>
+              <span className="text-[10px] font-bold text-white/30 uppercase tracking-widest">Workspace Snippets</span>
               <Link to="/settings/snippets" className="text-[10px] text-white/20 hover:text-white transition-colors underline">Manage</Link>
             </div>
             {snippets.map(s => (
@@ -424,10 +442,9 @@ const EditorPage: React.FC = () => {
               >
                 <div className="flex justify-between items-center mb-1.5">
                   <span className="text-xs font-bold text-white/80 group-hover:text-white">{s.name}</span>
-                  <span className="text-[8px] font-black uppercase text-white/20">{s.language}</span>
-                </div
+                </div>
                 <div className="bg-black/20 p-2 rounded-lg text-[8px] font-mono text-white/30 truncate group-hover:text-white/50">
-                  {s.code.slice(0, 50)}...
+                  {s.code.slice(0, 80)}...
                 </div>
               </button>
             ))}
@@ -547,7 +564,7 @@ const EditorPage: React.FC = () => {
 
   const previewRight = (
     <>
-      <div className="h-10 border-b border-white/5 flex items-centera justify-between px-4 bg-[#09090b]">
+      <div className="h-10 border-b border-white/5 flex items-center justify-between px-4 bg-[#09090b]">
         <div className="flex gap-1.5 bg-white/5 p-1 rounded-xl">
           <button 
             onClick={() => setPreviewMode('dev')}
