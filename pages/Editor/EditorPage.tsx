@@ -35,10 +35,136 @@ import FileTree from '../../components/SpaceTree/FileTree';
 import ResizableLayout from '../../components/Editor/ResizablePanels';
 import { GoogleGenAI } from '@google/genai';
 
+// CodeMirror Imports (Sub-packages instead of the aggregator)
+import { 
+  EditorView, 
+  lineNumbers, 
+  highlightActiveLineGutter, 
+  highlightSpecialChars, 
+  drawSelection, 
+  dropCursor, 
+  rectangularSelection, 
+  crosshairCursor, 
+  highlightActiveLine, 
+  keymap 
+} from '@codemirror/view';
+import { EditorState } from '@codemirror/state';
+import { 
+  markdown, 
+  markdownLanguage 
+} from '@codemirror/lang-markdown';
+import { html } from '@codemirror/lang-html';
+import { languages } from '@codemirror/language-data';
+import { tags as t } from '@lezer/highlight';
+import { 
+  HighlightStyle, 
+  syntaxHighlighting, 
+  foldGutter, 
+  indentOnInput, 
+  bracketMatching, 
+  defaultHighlightStyle,
+  foldKeymap
+} from '@codemirror/language';
+import { 
+  history, 
+  historyKeymap, 
+  defaultKeymap 
+} from '@codemirror/commands';
+import { 
+  searchKeymap, 
+  highlightSelectionMatches 
+} from '@codemirror/search';
+import { 
+  autocompletion, 
+  completionKeymap, 
+  closeBrackets, 
+  closeBracketsKeymap 
+} from '@codemirror/autocomplete';
+
+// Replicating basicSetup manually to avoid the 'codemirror' package aggregator issues
+const manualBasicSetup = [
+  lineNumbers(),
+  highlightActiveLineGutter(),
+  highlightSpecialChars(),
+  history(),
+  foldGutter(),
+  drawSelection(),
+  dropCursor(),
+  EditorState.allowMultipleSelections.of(true),
+  indentOnInput(),
+  syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
+  bracketMatching(),
+  closeBrackets(),
+  autocompletion(),
+  rectangularSelection(),
+  crosshairCursor(),
+  highlightActiveLine(),
+  highlightSelectionMatches(),
+  keymap.of([
+    ...closeBracketsKeymap,
+    ...defaultKeymap,
+    ...searchKeymap,
+    ...historyKeymap,
+    ...foldKeymap,
+    ...completionKeymap,
+  ]),
+];
+
+// Custom Slidev Dark Theme for CodeMirror
+const slidevDarkTheme = EditorView.theme({
+  "&": {
+    color: "#e4e4e7",
+    backgroundColor: "transparent",
+    fontSize: "14px",
+  },
+  ".cm-content": {
+    caretColor: "#ffffff",
+    paddingTop: "24px",
+    paddingBottom: "24px",
+  },
+  "&.cm-focused .cm-cursor": {
+    borderLeftColor: "#ffffff"
+  },
+  "&.cm-focused .cm-selectionBackground, .cm-selectionBackground, ::selection": {
+    backgroundColor: "rgba(255, 255, 255, 0.1) !important"
+  },
+  ".cm-gutters": {
+    backgroundColor: "#09090b",
+    color: "#3f3f46",
+    borderRight: "1px solid rgba(255,255,255,0.05)",
+    paddingLeft: "10px",
+    paddingRight: "10px"
+  },
+  ".cm-activeLine": { backgroundColor: "rgba(255,255,255,0.02)" },
+  ".cm-activeLineGutter": { backgroundColor: "rgba(255,255,255,0.05)", color: "#a1a1aa" },
+  ".cm-foldPlaceholder": {
+    backgroundColor: "transparent",
+    border: "none",
+    color: "#71717a"
+  }
+}, { dark: true });
+
+const slidevHighlightStyle = HighlightStyle.define([
+  { tag: t.heading1, fontSize: "1.4em", fontWeight: "bold", color: "#fafafa" },
+  { tag: t.heading2, fontSize: "1.2em", fontWeight: "bold", color: "#f4f4f5" },
+  { tag: t.heading3, fontSize: "1.1em", fontWeight: "bold", color: "#e4e4e7" },
+  { tag: t.keyword, color: "#93c5fd" },
+  { tag: t.operator, color: "#d1d5db" },
+  { tag: t.string, color: "#86efac" },
+  { tag: t.comment, color: "#52525b", fontStyle: "italic" },
+  { tag: t.meta, color: "#d8b4fe" }, // YAML frontmatter
+  { tag: t.url, color: "#93c5fd", textDecoration: "underline" },
+  { tag: t.strong, fontWeight: "bold" },
+  { tag: t.emphasis, fontStyle: "italic" },
+  { tag: t.link, color: "#93c5fd" },
+  { tag: t.list, color: "#fcd34d" },
+]);
+
 const EditorPage: React.FC = () => {
   const { slideSpaceId, slideId } = useParams();
   const navigate = useNavigate();
-  const textAreaRef = useRef<HTMLTextAreaElement>(null);
+  const editorContainerRef = useRef<HTMLDivElement>(null);
+  const editorViewRef = useRef<EditorView | null>(null);
   const outlineScrollRef = useRef<HTMLDivElement>(null);
   
   const [slides, setSlides] = useState<Slide[]>(mockSlides);
@@ -54,18 +180,53 @@ const EditorPage: React.FC = () => {
   const [chatHistory, setChatHistory] = useState<{role: 'user'|'ai', text: string}[]>([]);
   const [previewMode, setPreviewMode] = useState<'dev' | 'build'>('dev');
   
-  // Vertical Resizing State for Outline
   const [outlineHeight, setOutlineHeight] = useState(240);
 
+  // Initialize CodeMirror
+  useEffect(() => {
+    if (!editorContainerRef.current) return;
+
+    const startState = EditorState.create({
+      doc: content,
+      extensions: [
+        ...manualBasicSetup,
+        markdown({ base: markdownLanguage, codeLanguages: languages }),
+        html(),
+        slidevDarkTheme,
+        syntaxHighlighting(slidevHighlightStyle),
+        EditorView.updateListener.of((update) => {
+          if (update.docChanged) {
+            setContent(update.view.state.doc.toString());
+          }
+        }),
+      ],
+    });
+
+    const view = new EditorView({
+      state: startState,
+      parent: editorContainerRef.current,
+    });
+
+    editorViewRef.current = view;
+
+    return () => {
+      view.destroy();
+    };
+  }, []); // Only init once
+
+  // Sync content if changed from outside (e.g., slide selection)
   useEffect(() => {
     const s = slides.find(s => s.id === Number(slideId));
-    if (s) {
+    if (s && editorViewRef.current) {
       setCurrentSlide(s);
-      setContent(s.content);
+      if (editorViewRef.current.state.doc.toString() !== s.content) {
+        editorViewRef.current.dispatch({
+          changes: { from: 0, to: editorViewRef.current.state.doc.length, insert: s.content }
+        });
+      }
     }
   }, [slideId, slides]);
 
-  // --- Slide Page Calculation ---
   const slidePages = useMemo((): SlidePageInfo[] => {
     const segments = content.split(/\n---(?:\n|$)/);
     const pages: SlidePageInfo[] = [];
@@ -73,7 +234,6 @@ const EditorPage: React.FC = () => {
     let currentLine = 1;
     segments.forEach((segment, idx) => {
       if (idx === 0 && segment.trim() && !segment.includes('#')) {
-          // Likely global config
           currentLine += segment.split('\n').length + 1;
           return;
       }
@@ -152,39 +312,14 @@ const EditorPage: React.FC = () => {
     }
   };
 
-  const handlePaste = async (e: React.ClipboardEvent) => {
-    const items = e.clipboardData.items;
-    let newContent = content;
-
-    for (const item of items) {
-      if (item.type.includes('image')) {
-        const file = item.getAsFile();
-        if (file) {
-          const mockUrl = `https://picsum.photos/seed/${Math.random()}/1200/800`;
-          newContent += `\n<img src="${mockUrl}" width="100%" />\n`;
-        }
-      } else if (item.type.includes('video')) {
-         newContent += `\n<video src="https://example.com/mock-video.mp4" controls />\n`;
-      } else if (item.kind === 'file') {
-         newContent += `\n[File attachment: ${item.type}](https://example.com/download/asset)\n`;
-      }
-    }
-    setContent(newContent);
-  };
-
   const jumpToSlide = (line: number) => {
-    if (textAreaRef.current) {
-      const lines = content.split('\n');
-      let charPos = 0;
-      for (let i = 0; i < Math.min(line - 1, lines.length); i++) {
-        charPos += lines[i].length + 1;
-      }
-      textAreaRef.current.focus();
-      textAreaRef.current.setSelectionRange(charPos, charPos);
-      textAreaRef.current.scrollTo({
-        top: (line - 1) * 24, 
-        behavior: 'smooth'
+    if (editorViewRef.current) {
+      const lineData = editorViewRef.current.state.doc.line(line);
+      editorViewRef.current.dispatch({
+        selection: { anchor: lineData.from },
+        scrollIntoView: true
       });
+      editorViewRef.current.focus();
     }
   };
 
@@ -205,7 +340,6 @@ const EditorPage: React.FC = () => {
     navigate(`/slide/${slideSpaceId}/${newId}`);
   };
 
-  // --- Vertical Resizing Logic for Outline ---
   const startResizingOutline = (e: React.MouseEvent) => {
     e.preventDefault();
     const startY = e.clientY;
@@ -233,8 +367,6 @@ const EditorPage: React.FC = () => {
       });
     }
   };
-
-  // --- RENDERS ---
 
   const sidebarContent = (
     <>
@@ -324,22 +456,7 @@ const EditorPage: React.FC = () => {
         </div>
       </div>
       <div className="flex-1 relative flex flex-col overflow-hidden bg-[#0c0c0e]">
-        <div className="flex flex-1 overflow-hidden">
-          <div className="w-12 bg-[#09090b] text-white/10 font-mono text-[10px] pt-6 flex flex-col items-center select-none border-r border-white/5">
-            {Array.from({ length: 100 }).map((_, i) => (
-              <div key={i} className="h-6 flex items-center">{i + 1}</div>
-            ))}
-          </div>
-          <textarea
-            ref={textAreaRef}
-            className="flex-1 bg-transparent p-6 font-mono text-sm resize-none focus:outline-none text-white/80 leading-6 custom-scrollbar selection:bg-white/20"
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            onPaste={handlePaste}
-            placeholder="--- theme: default --- # Welcome to Slidev"
-            spellCheck={false}
-          />
-        </div>
+        <div ref={editorContainerRef} className="flex-1 overflow-hidden" />
         
         {aiChatOpen && (
           <div className="absolute left-1/2 -translate-x-1/2 top-10 w-full max-w-xl z-50 animate-in fade-in slide-in-from-top-6 duration-300">
@@ -431,7 +548,6 @@ const EditorPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Vertical Resizer Handle */}
       <div 
         onMouseDown={startResizingOutline}
         className="h-1 cursor-row-resize hover:bg-white/10 z-20 flex-shrink-0 transition-colors bg-white/5" 
