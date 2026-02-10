@@ -36,7 +36,12 @@ import FileTree from '../../components/SpaceTree/FileTree';
 import ResizableLayout from '../../components/Editor/ResizablePanels';
 import { GoogleGenAI } from '@google/genai';
 
-// CodeMirror Imports (Sub-packages instead of the aggregator)
+// Yjs and Hocuspocus
+import * as Y from 'yjs';
+import { HocuspocusProvider } from '@hocuspocus/provider';
+import { yCollab } from 'y-codemirror.next';
+
+// CodeMirror Imports
 import { 
   EditorView, 
   lineNumbers, 
@@ -85,7 +90,7 @@ import {
   CompletionContext
 } from '@codemirror/autocomplete';
 
-// Custom Slidev Dark Theme for CodeMirror
+// Theme configuration
 const slidevDarkTheme = EditorView.theme({
   "&": {
     color: "#e4e4e7",
@@ -127,7 +132,7 @@ const slidevHighlightStyle = HighlightStyle.define([
   { tag: t.operator, color: "#d1d5db" },
   { tag: t.string, color: "#86efac" },
   { tag: t.comment, color: "#52525b", fontStyle: "italic" },
-  { tag: t.meta, color: "#d8b4fe" }, // YAML frontmatter
+  { tag: t.meta, color: "#d8b4fe" },
   { tag: t.url, color: "#93c5fd", textDecoration: "underline" },
   { tag: t.strong, fontWeight: "bold" },
   { tag: t.emphasis, fontStyle: "italic" },
@@ -162,8 +167,34 @@ const EditorPage: React.FC = () => {
   
   const [outlineHeight, setOutlineHeight] = useState(240);
 
-  // Custom Snippet completion source
-  const snippetCompletionSource = (context: CompletionContext) => {
+  // Collaboration State
+  const ydoc = useMemo(() => new Y.Doc(), []);
+  const yText = useMemo(() => ydoc.getText('codemirror'), [ydoc]);
+  
+  const provider = useMemo(() => new HocuspocusProvider({
+    url: 'ws://localhost:1234',
+    name: slideId,
+    document: ydoc,
+    onSynced: () => {
+      if (yText.toString().length === 0 && currentSlide.content) {
+        yText.insert(0, currentSlide.content);
+      }
+    }
+  }), [slideId, ydoc, yText]);
+
+  useEffect(() => {
+    provider.setAwarenessField('user', {
+      name: mockUser.name,
+      color: '#' + Math.floor(Math.random() * 16777215).toString(16),
+    });
+
+    return () => {
+      provider.destroy();
+      ydoc.destroy();
+    };
+  }, [provider, ydoc]);
+
+  const snippetCompletionSource = useCallback((context: CompletionContext) => {
     const word = context.matchBefore(/\w*/);
     if (!word || (word.from === word.to && !context.explicit)) return null;
 
@@ -176,9 +207,8 @@ const EditorPage: React.FC = () => {
         apply: s.code
       }))
     };
-  };
+  }, [snippets]);
 
-  // Replicating basicSetup manually
   const manualBasicSetup = useMemo(() => [
     lineNumbers(),
     highlightActiveLineGutter(),
@@ -192,7 +222,7 @@ const EditorPage: React.FC = () => {
     syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
     bracketMatching(),
     closeBrackets(),
-    autocompletion({ override: [snippetCompletionSource] }), // Use custom completions
+    autocompletion({ override: [snippetCompletionSource] }),
     rectangularSelection(),
     crosshairCursor(),
     highlightActiveLine(),
@@ -205,16 +235,16 @@ const EditorPage: React.FC = () => {
       ...foldKeymap,
       ...completionKeymap,
     ]),
-  ], [snippets]);
+  ], [snippetCompletionSource]);
 
-  // Initialize CodeMirror
   useEffect(() => {
     if (!editorContainerRef.current) return;
 
     const startState = EditorState.create({
-      doc: content,
+      doc: yText.toString(),
       extensions: [
         ...manualBasicSetup,
+        yCollab(yText, provider.awareness),
         markdown({ base: markdownLanguage, codeLanguages: languages }),
         html(),
         css(),
@@ -236,57 +266,125 @@ const EditorPage: React.FC = () => {
 
     editorViewRef.current = view;
 
+    const handleYChange = () => {
+      setContent(yText.toString());
+    };
+    yText.observe(handleYChange);
+
     return () => {
+      yText.unobserve(handleYChange);
       view.destroy();
     };
-  }, [manualBasicSetup]); // Re-init if setup changes (snippets update)
+  }, [manualBasicSetup, yText, provider]);
 
-  // Sync content if changed from outside (e.g., slide selection)
   useEffect(() => {
     const s = slides.find(s => s.id === Number(slideId));
-    if (s && editorViewRef.current) {
+    if (s) {
       setCurrentSlide(s);
-      if (editorViewRef.current.state.doc.toString() !== s.content) {
-        editorViewRef.current.dispatch({
-          changes: { from: 0, to: editorViewRef.current.state.doc.length, insert: s.content }
-        });
-      }
     }
   }, [slideId, slides]);
 
+  /**
+   * Refined slide pages calculation for Slidev.
+   * Slidev uses '---' as a separator. 
+   * A slide might start with a frontmatter block (enclosed in ---).
+   */
   const slidePages = useMemo((): SlidePageInfo[] => {
-    const segments = content.split(/\n---(?:\n|$)/);
-    const pages: SlidePageInfo[] = [];
+    const lines = content.split('\n');
+    const blocks: { lines: string[], startLine: number, isSeparator: boolean }[] = [];
     
-    let currentLine = 1;
-    segments.forEach((segment, idx) => {
-      if (idx === 0 && segment.trim() && !segment.includes('#')) {
-          currentLine += segment.split('\n').length + 1;
-          return;
+    let currentBlock: string[] = [];
+    let currentBlockStartLine = 1;
+
+    lines.forEach((line, idx) => {
+      if (line.trim() === '---') {
+        // End current block if it exists
+        if (currentBlock.length > 0 || (idx === 0 && line.trim() === '---')) {
+          blocks.push({ lines: currentBlock, startLine: currentBlockStartLine, isSeparator: false });
+        }
+        // Mark the separator itself
+        blocks.push({ lines: ['---'], startLine: idx + 1, isSeparator: true });
+        currentBlock = [];
+        currentBlockStartLine = idx + 2;
+      } else {
+        currentBlock.push(line);
       }
-      
-      const lines = segment.split('\n');
-      let title = "";
-      for (const line of lines) {
-        if (line.trim().startsWith('#')) {
-          title = line.trim().replace(/^#+\s+/, '');
-          break;
+    });
+    if (currentBlock.length > 0) {
+      blocks.push({ lines: currentBlock, startLine: currentBlockStartLine, isSeparator: false });
+    }
+
+    const pages: SlidePageInfo[] = [];
+    let i = 0;
+
+    // Slidev Logic:
+    // A slide starts either at the beginning or after a separator.
+    // If a separator is encountered, it might be the start of a frontmatter block.
+    while (i < blocks.length) {
+      const b = blocks[i];
+
+      // Case 1: If it starts with a separator, it might be a frontmatter block
+      if (b.isSeparator && i + 1 < blocks.length && !blocks[i+1].isSeparator) {
+        const potentialYaml = blocks[i+1];
+        // If next block is just YAML (no headers), and followed by another separator
+        const isYaml = !potentialYaml.lines.some(l => l.trim().startsWith('#')) && potentialYaml.lines.some(l => l.includes(':'));
+        
+        if (isYaml && i + 2 < blocks.length && blocks[i+2].isSeparator) {
+          // This sequence: [---, YAML, ---] + content block
+          const slideLineStart = b.startLine;
+          let slideContentLines: string[] = [];
+          
+          // Move cursor to content after the closing separator
+          let nextI = i + 3;
+          // Collect all lines until the next non-frontmatter separator
+          while (nextI < blocks.length && !blocks[nextI].isSeparator) {
+            slideContentLines.push(...blocks[nextI].lines);
+            nextI++;
+          }
+
+          // Merge for metadata extraction
+          const fullContent = [...potentialYaml.lines, ...slideContentLines];
+          let title = "";
+          for (const line of fullContent) {
+            if (line.trim().startsWith('#')) {
+              title = line.trim().replace(/^#+\s+/, '');
+              break;
+            }
+          }
+
+          pages.push({
+            index: pages.length + 1,
+            title: title || `Slide ${pages.length + 1}`,
+            preview: slideContentLines.find(l => l.trim().length > 0)?.slice(0, 40) || "Empty Slide",
+            lineStart: slideLineStart
+          });
+
+          i = nextI;
+          continue;
         }
       }
-      
-      const cleanContent = segment.trim().replace(/^---/, '').trim();
-      const preview = cleanContent.slice(0, 15) || "Empty Slide";
 
-      pages.push({
-        index: pages.length + 1,
-        title: title || `Slide ${pages.length + 1}`,
-        preview: preview,
-        lineStart: currentLine
-      });
+      // Case 2: Standard content block
+      if (!b.isSeparator && b.lines.length > 0) {
+        let title = "";
+        for (const line of b.lines) {
+          if (line.trim().startsWith('#')) {
+            title = line.trim().replace(/^#+\s+/, '');
+            break;
+          }
+        }
+        
+        pages.push({
+          index: pages.length + 1,
+          title: title || `Slide ${pages.length + 1}`,
+          preview: b.lines.find(l => l.trim().length > 0)?.slice(0, 40) || "Empty Slide",
+          lineStart: b.startLine
+        });
+      }
       
-      currentLine += lines.length + 1;
-    });
-    
+      i++;
+    }
+
     return pages.length > 0 ? pages : [{ index: 1, title: "Untitled", preview: "...", lineStart: 1 }];
   }, [content]);
 
@@ -341,7 +439,9 @@ const EditorPage: React.FC = () => {
 
   const jumpToSlide = (line: number) => {
     if (editorViewRef.current) {
-      const lineData = editorViewRef.current.state.doc.line(line);
+      const docLines = editorViewRef.current.state.doc.lines;
+      const targetLine = Math.max(1, Math.min(line, docLines));
+      const lineData = editorViewRef.current.state.doc.line(targetLine);
       editorViewRef.current.dispatch({
         selection: { anchor: lineData.from },
         scrollIntoView: true

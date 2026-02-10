@@ -66,6 +66,36 @@
       .cm-scroller {
         font-family: 'JetBrains Mono', 'Fira Code', 'Menlo', 'Monaco', 'Courier New', monospace !important;
       }
+      /* Yjs Awareness Cursors */
+      .cm-ySelection {
+        opacity: 0.3;
+      }
+      .cm-ySelectionCaret {
+        position: relative;
+        border-left: 2px solid black;
+        margin-left: -1px;
+        margin-right: -1px;
+        z-index: 10;
+        pointer-events: none;
+      }
+      .cm-ySelectionInfo {
+        position: absolute;
+        top: -1.2em;
+        left: -1px;
+        font-size: 10px;
+        font-family: sans-serif;
+        font-weight: bold;
+        padding: 1px 4px;
+        border-radius: 2px;
+        color: white;
+        white-space: nowrap;
+        user-select: none;
+        opacity: 0;
+        transition: opacity 0.2s;
+      }
+      .cm-ySelectionCaret:hover .cm-ySelectionInfo {
+        opacity: 1;
+      }
     </style>
 <script type="importmap">
 {
@@ -88,7 +118,10 @@
     "@codemirror/lang-css": "https://esm.sh/@codemirror/lang-css@^6.0.0",
     "@codemirror/autocomplete": "https://esm.sh/@codemirror/autocomplete@^6.0.0",
     "@lezer/highlight": "https://esm.sh/@lezer/highlight@^1.0.0",
-    "@codemirror/language-data": "https://esm.sh/@codemirror/language-data@^6.5.2"
+    "@codemirror/language-data": "https://esm.sh/@codemirror/language-data@^6.5.2",
+    "yjs": "https://esm.sh/yjs@13.6.20",
+    "@hocuspocus/provider": "https://esm.sh/@hocuspocus/provider@^3.4.4?external=yjs",
+    "y-codemirror.next": "https://esm.sh/y-codemirror.next@0.3.5?external=yjs,@codemirror/state,@codemirror/view"
   }
 }
 </script>
