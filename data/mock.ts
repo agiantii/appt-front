@@ -51,6 +51,11 @@ export const mockSnippets: Snippet[] = [
     id: 's4', 
     name: 'Slidev: Click Animations', 
     code: '<ul>\n  <li v-click>First item</li>\n  <li v-click>Second item</li>\n  <li v-click>Third item</li>\n</ul>' 
+  },
+    { 
+    id: 's5', 
+    name: 'Slidev: Template', 
+    code: '---\n theme: default \n --- \n #slide 1' 
   }
 ];
 
