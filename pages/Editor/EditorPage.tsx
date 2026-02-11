@@ -116,33 +116,76 @@ const EditorPage: React.FC = () => {
     return saved ? JSON.parse(saved) : mockSnippets;
   }, []);
 
-  // Yjs Doc & Text
-  const ydoc = useMemo(() => new Y.Doc(), []);
-  const yText = useMemo(() => ydoc.getText('codemirror'), [ydoc]);
+  // Yjs Doc & Text - 使用 ref 避免重新创建
+  const ydocRef = useRef<Y.Doc | null>(null);
+  const providerRef = useRef<HocuspocusProvider | null>(null);
+  const yTextRef = useRef<Y.Text | null>(null);
+  const initialContentRef = useRef<string>('');
   
-  // Hocuspocus Provider
-  const provider = useMemo(() => new HocuspocusProvider({
-    url: 'ws://localhost:1234',
-    name: `slide-${slideId}`,
-    document: ydoc,
-    onSynced: () => {
-      // 安全检查：确保 yText 和 currentSlide 存在
-      if (yText && yText.toString().length === 0 && currentSlide?.content) {
-        yText.insert(0, currentSlide.content);
-      }
-    }
-  }), [slideId, ydoc, yText, currentSlide?.content]);
-
+  // 保存初始内容引用，避免闭包问题
   useEffect(() => {
+    if (currentSlide?.content) {
+      initialContentRef.current = currentSlide.content;
+    }
+  }, [currentSlide?.content]);
+  
+  // 初始化 Yjs 和 Provider - 只在 slideId 变化时执行
+  useEffect(() => {
+    if (!slideId) return;
+    
+    // 清理旧的实例
+    if (providerRef.current) {
+      providerRef.current.destroy();
+    }
+    if (ydocRef.current) {
+      ydocRef.current.destroy();
+    }
+    
+    // 创建新的 Y.Doc
+    const ydoc = new Y.Doc();
+    ydocRef.current = ydoc;
+    
+    // 获取 Y.Text
+    const yText = ydoc.getText('codemirror');
+    yTextRef.current = yText;
+    
+    // 创建 Provider
+    const provider = new HocuspocusProvider({
+      url: 'ws://localhost:1234',
+      name: `slide-${slideId}`,
+      document: ydoc,
+      onSynced: () => {
+        // 使用 ref 获取最新初始内容，避免闭包问题
+        if (yText && yText.toString().length === 0 && initialContentRef.current) {
+          yText.insert(0, initialContentRef.current);
+        }
+      },
+      onConnect: () => {
+        console.log('[WebSocket] Connected to slide:', slideId);
+      },
+      onDisconnect: () => {
+        console.log('[WebSocket] Disconnected from slide:', slideId);
+      },
+      onAuthenticationFailed: () => {
+        console.error('[WebSocket] Authentication failed');
+      },
+    });
+    
+    providerRef.current = provider;
+    
+    // 设置 awareness
     provider.setAwarenessField('user', { 
       name: mockUser.name, 
       color: '#' + Math.floor(Math.random() * 16777215).toString(16) 
     });
+    
     return () => {
       provider.destroy();
       ydoc.destroy();
     };
-  }, [provider, ydoc]);
+  }, [slideId]); // 只在 slideId 变化时重新创建
+
+  // awareness 已在创建 provider 时设置，无需单独的 effect
 
   const insertSnippet = useCallback((code: string) => {
     if (editorViewRef.current) {
@@ -200,15 +243,20 @@ const EditorPage: React.FC = () => {
     ]),
   ], []);
 
+  // 编辑器初始化 effect - 等待 provider 和 yText 准备好
   useEffect(() => {
     if (!editorContainerRef.current) return;
+    if (!yTextRef.current || !providerRef.current) return;
+
+    const yText = yTextRef.current;
+    const provider = providerRef.current;
 
     // 安全获取初始文档内容
     let initialDoc = "";
     try {
-      initialDoc = yText ? yText.toString() : (currentSlide?.content || "");
+      initialDoc = yText.toString() || initialContentRef.current || "";
     } catch(e) {
-      initialDoc = currentSlide?.content || "";
+      initialDoc = initialContentRef.current || "";
     }
 
     const view = new EditorView({
@@ -250,7 +298,8 @@ const EditorPage: React.FC = () => {
     return () => {
       view.destroy();
     };
-  }, [manualBasicSetup, yText, provider, snippetCompletionSource, currentSlide?.content]);
+    // 只在 slideId 或关键配置变化时重新初始化编辑器
+  }, [slideId, manualBasicSetup, snippetCompletionSource]);
 
   const handleSave = useCallback(() => {
     setIsSaving(true);
