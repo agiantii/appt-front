@@ -58,16 +58,36 @@ import {
   defaultHighlightStyle,
   foldKeymap
 } from '@codemirror/language';
-import { history, historyKeymap, defaultKeymap } from '@codemirror/commands';
+import { history, historyKeymap, defaultKeymap, indentWithTab } from '@codemirror/commands';
 import { searchKeymap, highlightSelectionMatches } from '@codemirror/search';
 import { autocompletion, completionKeymap, closeBrackets, closeBracketsKeymap, CompletionContext } from '@codemirror/autocomplete';
 
 const slidevDarkTheme = EditorView.theme({
-  "&": { color: "#e4e4e7", backgroundColor: "transparent", fontSize: "14px" },
-  ".cm-content": { caretColor: "#ffffff", paddingTop: "24px", paddingBottom: "24px" },
+  "&": { 
+    color: "#e4e4e7", 
+    backgroundColor: "transparent", 
+    fontSize: "14px",
+    height: "100%" 
+  },
+  "& .cm-scroller": {
+    overflow: "auto",
+    outline: "none"
+  },
+  ".cm-content": { 
+    caretColor: "#ffffff", 
+    paddingTop: "24px", 
+    paddingBottom: "24px",
+    minHeight: "100%"
+  },
   "&.cm-focused .cm-cursor": { borderLeftColor: "#ffffff" },
   "&.cm-focused .cm-selectionBackground, .cm-selectionBackground, ::selection": { backgroundColor: "rgba(255, 255, 255, 0.1) !important" },
-  ".cm-gutters": { backgroundColor: "#09090b", color: "#3f3f46", borderRight: "1px solid rgba(255,255,255,0.05)", paddingLeft: "10px", paddingRight: "10px" },
+  ".cm-gutters": { 
+    backgroundColor: "#09090b", 
+    color: "#3f3f46", 
+    borderRight: "1px solid rgba(255,255,255,0.05)", 
+    paddingLeft: "10px", 
+    paddingRight: "10px" 
+  },
   ".cm-activeLine": { backgroundColor: "rgba(255,255,255,0.02)" },
   ".cm-activeLineGutter": { backgroundColor: "rgba(255,255,255,0.05)", color: "#a1a1aa" },
   ".cm-foldPlaceholder": { backgroundColor: "transparent", border: "none", color: "#71717a" }
@@ -116,64 +136,52 @@ const EditorPage: React.FC = () => {
     return saved ? JSON.parse(saved) : mockSnippets;
   }, []);
 
-  // Yjs Doc & Text - 使用 ref 避免重新创建
+  // Keyboard shortcut for sidebar toggle: Ctrl+B
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
+        e.preventDefault();
+        setSidebarOpen(prev => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   const ydocRef = useRef<Y.Doc | null>(null);
   const providerRef = useRef<HocuspocusProvider | null>(null);
   const yTextRef = useRef<Y.Text | null>(null);
   const initialContentRef = useRef<string>('');
   
-  // 保存初始内容引用，避免闭包问题
   useEffect(() => {
     if (currentSlide?.content) {
       initialContentRef.current = currentSlide.content;
     }
   }, [currentSlide?.content]);
   
-  // 初始化 Yjs 和 Provider - 只在 slideId 变化时执行
   useEffect(() => {
     if (!slideId) return;
     
-    // 清理旧的实例
-    if (providerRef.current) {
-      providerRef.current.destroy();
-    }
-    if (ydocRef.current) {
-      ydocRef.current.destroy();
-    }
+    if (providerRef.current) providerRef.current.destroy();
+    if (ydocRef.current) ydocRef.current.destroy();
     
-    // 创建新的 Y.Doc
     const ydoc = new Y.Doc();
     ydocRef.current = ydoc;
-    
-    // 获取 Y.Text
     const yText = ydoc.getText('codemirror');
     yTextRef.current = yText;
     
-    // 创建 Provider
     const provider = new HocuspocusProvider({
       url: 'ws://localhost:1234',
       name: `slide-${slideId}`,
       document: ydoc,
       onSynced: () => {
-        // 使用 ref 获取最新初始内容，避免闭包问题
         if (yText && yText.toString().length === 0 && initialContentRef.current) {
           yText.insert(0, initialContentRef.current);
         }
       },
-      onConnect: () => {
-        console.log('[WebSocket] Connected to slide:', slideId);
-      },
-      onDisconnect: () => {
-        console.log('[WebSocket] Disconnected from slide:', slideId);
-      },
-      onAuthenticationFailed: () => {
-        console.error('[WebSocket] Authentication failed');
-      },
     });
     
     providerRef.current = provider;
-    
-    // 设置 awareness
     provider.setAwarenessField('user', { 
       name: mockUser.name, 
       color: '#' + Math.floor(Math.random() * 16777215).toString(16) 
@@ -183,9 +191,7 @@ const EditorPage: React.FC = () => {
       provider.destroy();
       ydoc.destroy();
     };
-  }, [slideId]); // 只在 slideId 变化时重新创建
-
-  // awareness 已在创建 provider 时设置，无需单独的 effect
+  }, [slideId]);
 
   const insertSnippet = useCallback((code: string) => {
     if (editorViewRef.current) {
@@ -199,7 +205,6 @@ const EditorPage: React.FC = () => {
     }
   }, []);
 
-  // 自定义补全源
   const snippetCompletionSource = useCallback((context: CompletionContext) => {
     const word = context.matchBefore(/\w*/);
     if (!word || (word.from === word.to && !context.explicit)) return null;
@@ -228,12 +233,13 @@ const EditorPage: React.FC = () => {
     syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
     bracketMatching(),
     closeBrackets(),
-    autocompletion(), // 不使用 override，允许与语言自带补全并存
+    autocompletion(),
     rectangularSelection(),
     crosshairCursor(),
     highlightActiveLine(),
     highlightSelectionMatches(),
     keymap.of([
+      indentWithTab, // Enable Tab indentation
       ...closeBracketsKeymap,
       ...defaultKeymap,
       ...searchKeymap,
@@ -243,7 +249,6 @@ const EditorPage: React.FC = () => {
     ]),
   ], []);
 
-  // 编辑器初始化 effect - 等待 provider 和 yText 准备好
   useEffect(() => {
     if (!editorContainerRef.current) return;
     if (!yTextRef.current || !providerRef.current) return;
@@ -251,7 +256,6 @@ const EditorPage: React.FC = () => {
     const yText = yTextRef.current;
     const provider = providerRef.current;
 
-    // 安全获取初始文档内容
     let initialDoc = "";
     try {
       initialDoc = yText.toString() || initialContentRef.current || "";
@@ -269,14 +273,12 @@ const EditorPage: React.FC = () => {
           html(),
           css(),
           javascript(),
-          // 并存补全的关键：注册到 languageData 刻面
           Prec.high(EditorState.languageData.of(() => [{
             autocomplete: snippetCompletionSource
           }])),
           slidevDarkTheme,
           syntaxHighlighting(slidevHighlightStyle),
           EditorView.updateListener.of((update) => {
-            // 修复 toString 报错：使用更安全的访问方式
             if (update.docChanged && update.view) {
               try {
                 const newDocString = update.view.state.doc.toString();
@@ -298,7 +300,6 @@ const EditorPage: React.FC = () => {
     return () => {
       view.destroy();
     };
-    // 只在 slideId 或关键配置变化时重新初始化编辑器
   }, [slideId, manualBasicSetup, snippetCompletionSource]);
 
   const handleSave = useCallback(() => {
@@ -359,17 +360,18 @@ const EditorPage: React.FC = () => {
   };
 
   const editorCenter = (
-    <div className="flex-1 flex flex-col min-w-0 bg-[#0c0c0e]">
-      <div className="h-10 border-b border-white/5 flex items-center px-4 bg-[#09090b] overflow-x-auto whitespace-nowrap hide-scrollbar">
+    <div className="flex-1 flex flex-col min-w-0 bg-[#0c0c0e] overflow-hidden">
+      <div className="h-10 border-b border-white/5 flex items-center px-4 bg-[#09090b] overflow-x-auto whitespace-nowrap hide-scrollbar flex-shrink-0">
         <div className="flex items-center gap-2 bg-[#18181b] px-4 py-2 rounded-t-xl border-t border-x border-white/10 -mb-[1px]">
           <Files className="w-3.5 h-3.5 text-white/40" />
           <span className="text-xs font-semibold text-white/90">{currentSlide?.title}.md</span>
         </div>
       </div>
-      <div className="flex-1 relative flex flex-col overflow-hidden">
-        <div ref={editorContainerRef} className="flex-1 overflow-hidden" />
+      <div className="flex-1 relative overflow-hidden flex flex-col">
+        {/* Container must be 100% height to allow CodeMirror virtual scrolling */}
+        <div ref={editorContainerRef} className="absolute inset-0" />
       </div>
-      <div className="h-10 border-t border-white/5 flex items-center justify-between px-4 bg-[#09090b] text-[10px] font-bold text-white/30 uppercase tracking-widest">
+      <div className="h-10 border-t border-white/5 flex items-center justify-between px-4 bg-[#09090b] text-[10px] font-bold text-white/30 uppercase tracking-widest flex-shrink-0">
         <div className="flex items-center gap-6">
            <div className="flex items-center gap-2 hover:text-white transition-colors cursor-pointer"><ImageIcon className="w-3.5 h-3.5" /> Media</div>
            <div className="flex items-center gap-2 hover:text-white transition-colors cursor-pointer"><Layout className="w-3.5 h-3.5" /> Layouts</div>
