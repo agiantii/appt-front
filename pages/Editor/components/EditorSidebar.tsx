@@ -1,9 +1,12 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Zap, Sidebar as SidebarIcon, Files, GitBranch, MessageSquare, Sparkles, Code, Home, History, ArrowRight } from 'lucide-react';
-import { SidebarTab, Slide, Snippet } from '../../../types';
+import { Zap, Sidebar as SidebarIcon, Files, GitBranch, MessageSquare, Sparkles, Code, Home, History, ArrowRight, RotateCcw, GitCommit, Send, Trash2, X } from 'lucide-react';
+import { SidebarTab, Slide, Snippet, Version, Comment } from '../../../types';
 import FileTree from '../../../components/SpaceTree/FileTree';
+import { versionApi } from '../../../api/version';
+import { commentApi } from '../../../api/comment';
+import { InputModal, ConfirmModal } from '../../../components/Common/Modal';
 
 interface EditorSidebarProps {
   activeTab: SidebarTab;
@@ -20,14 +23,143 @@ interface EditorSidebarProps {
   chatInput: string;
   setChatInput: (input: string) => void;
   onSendChat: () => void;
+  slideId?: string;
+  currentUser?: { id: number; username: string; avatarUrl: string | null } | null;
+  onVersionRollback?: (content: string) => void;
 }
 
 const EditorSidebar: React.FC<EditorSidebarProps> = ({
   activeTab, setActiveTab, sidebarOpen, setSidebarOpen,
   slides, slideSpaceId, onUpdateSlides, onAddSlide,
-  snippets, onInsertSnippet, chatHistory, chatInput, setChatInput, onSendChat
+  snippets, onInsertSnippet, chatHistory, chatInput, setChatInput, onSendChat,
+  slideId, currentUser, onVersionRollback
 }) => {
   const navigate = useNavigate();
+  
+  // Version state
+  const [versions, setVersions] = useState<Version[]>([]);
+  const [isLoadingVersions, setIsLoadingVersions] = useState(false);
+  const [showVersionModal, setShowVersionModal] = useState(false);
+  const [versionToRollback, setVersionToRollback] = useState<Version | null>(null);
+  const [rollbackMessage, setRollbackMessage] = useState('');
+  
+  // Comment state
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [isLoadingComments, setIsLoadingComments] = useState(false);
+  const [commentInput, setCommentInput] = useState('');
+  const [replyTo, setReplyTo] = useState<Comment | null>(null);
+  const [commentToDelete, setCommentToDelete] = useState<Comment | null>(null);
+
+  // Load versions when git tab is active
+  useEffect(() => {
+    if (activeTab === 'git' && slideId) {
+      loadVersions();
+    }
+  }, [activeTab, slideId]);
+
+  // Load comments when comments tab is active
+  useEffect(() => {
+    if (activeTab === 'comments' && slideId) {
+      loadComments();
+    }
+  }, [activeTab, slideId]);
+
+  const loadVersions = async () => {
+    if (!slideId) return;
+    setIsLoadingVersions(true);
+    try {
+      const res = await versionApi.findAll(Number(slideId), { page: 1, pageSize: 20 });
+      if (res.statusCode === 0) {
+        setVersions(res.data.items);
+      }
+    } catch (err) {
+      console.error('Failed to load versions:', err);
+    } finally {
+      setIsLoadingVersions(false);
+    }
+  };
+
+  const loadComments = async () => {
+    if (!slideId) return;
+    setIsLoadingComments(true);
+    try {
+      const res = await commentApi.findAll(Number(slideId));
+      if (res.statusCode === 0) {
+        setComments(res.data.items);
+      }
+    } catch (err) {
+      console.error('Failed to load comments:', err);
+    } finally {
+      setIsLoadingComments(false);
+    }
+  };
+
+  const handleCreateVersion = async (commitMsg: string) => {
+    if (!slideId) return;
+    try {
+      const res = await versionApi.create(Number(slideId), { commitMsg });
+      if (res.statusCode === 0) {
+        setVersions([res.data, ...versions]);
+      }
+    } catch (err) {
+      console.error('Failed to create version:', err);
+    }
+  };
+
+  const handleRollback = async () => {
+    if (!slideId || !versionToRollback) return;
+    try {
+      const res = await versionApi.rollback(Number(slideId), versionToRollback.id, { 
+        commitMsg: rollbackMessage || `回滚到版本 ${versionToRollback.versionNumber}` 
+      });
+      if (res.statusCode === 0) {
+        // Reload versions
+        loadVersions();
+        // Fetch the rolled back version content
+        const versionRes = await versionApi.findOne(Number(slideId), versionToRollback.id);
+        if (versionRes.statusCode === 0 && onVersionRollback) {
+          onVersionRollback(versionRes.data.content);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to rollback:', err);
+    } finally {
+      setVersionToRollback(null);
+      setRollbackMessage('');
+    }
+  };
+
+  const handlePostComment = async () => {
+    if (!slideId || !commentInput.trim()) return;
+    try {
+      const res = await commentApi.create({
+        slideId: Number(slideId),
+        content: commentInput.trim(),
+        replyId: replyTo?.id
+      });
+      if (res.statusCode === 0) {
+        setComments([res.data, ...comments]);
+        setCommentInput('');
+        setReplyTo(null);
+      }
+    } catch (err) {
+      console.error('Failed to post comment:', err);
+    }
+  };
+
+  const handleDeleteComment = async () => {
+    if (!commentToDelete) return;
+    try {
+      const res = await commentApi.remove(commentToDelete.id);
+      if (res.statusCode === 0) {
+        setComments(comments.filter(c => c.id !== commentToDelete.id));
+      }
+    } catch (err) {
+      console.error('Failed to delete comment:', err);
+    } finally {
+      setCommentToDelete(null);
+    }
+  };
 
   const handleTabClick = (tab: SidebarTab) => {
     setActiveTab(tab);
@@ -104,25 +236,131 @@ const EditorSidebar: React.FC<EditorSidebarProps> = ({
               </div>
             )}
             {activeTab === 'git' && (
-              <div className="p-4 space-y-4">
-                <div className="text-[10px] font-bold text-white/20 uppercase tracking-widest">Git Graph</div>
-                {[1, 2, 3].map(i => (
-                  <div key={i} className="flex gap-3 p-3 bg-white/5 rounded-xl border border-white/5 hover:border-white/10 transition-all cursor-pointer group relative overflow-hidden">
-                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-white/10 group-hover:bg-white/40 transition-colors" />
-                    <History className="w-4 h-4 text-white/20 group-hover:text-white/60" />
-                    <div>
-                      <div className="text-xs font-semibold text-white/80">commit: {Math.random().toString(36).substring(7)}</div>
-                      <div className="text-[10px] text-white/30 font-medium">Refactor slide {i} layouts • 2h ago</div>
-                    </div>
-                  </div>
-                ))}
+              <div className="flex flex-col h-full">
+                <div className="flex items-center justify-between px-3 py-2 mb-2">
+                  <span className="text-[10px] font-bold text-white/30 uppercase tracking-widest">版本历史</span>
+                  <button
+                    onClick={() => setShowVersionModal(true)}
+                    className="flex items-center gap-1 px-2 py-1 bg-white/5 hover:bg-white/10 rounded text-[10px] text-white/60 hover:text-white transition-colors"
+                  >
+                    <GitCommit className="w-3 h-3" />
+                    创建版本
+                  </button>
+                </div>
+                <div className="flex-1 overflow-y-auto px-2 space-y-2">
+                  {isLoadingVersions ? (
+                    <div className="text-center py-8 text-white/20 text-xs">加载中...</div>
+                  ) : versions.length === 0 ? (
+                    <div className="text-center py-8 text-white/20 text-xs">暂无版本记录</div>
+                  ) : (
+                    versions.map((version) => (
+                      <div 
+                        key={version.id} 
+                        className="flex gap-2 p-3 bg-white/5 rounded-xl border border-white/5 hover:border-white/10 transition-all group"
+                      >
+                        <History className="w-4 h-4 text-white/30 flex-shrink-0 mt-0.5" />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-mono text-white/40">v{version.versionNumber}</span>
+                            <span className="text-xs font-medium text-white/80 truncate">{version.commitMsg}</span>
+                          </div>
+                          <div className="text-[10px] text-white/30 mt-1">
+                            {version.creatorName} • {new Date(version.createdAt).toLocaleDateString()}
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => setVersionToRollback(version)}
+                          className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-white/10 rounded text-white/40 hover:text-white transition-all"
+                          title="回滚到此版本"
+                        >
+                          <RotateCcw className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
               </div>
             )}
             {activeTab === 'comments' && (
-              <div className="flex flex-col h-full items-center justify-center text-white/10 text-center px-6">
-                <MessageSquare className="w-10 h-10 mb-4 opacity-5" />
-                <span className="text-xs font-semibold tracking-wide uppercase opacity-30">No Discussion Yet</span>
-                <p className="text-[10px] mt-2 opacity-20">Collaborators can leave comments here.</p>
+              <div className="flex flex-col h-full">
+                <div className="flex-1 overflow-y-auto px-3 py-2 space-y-3">
+                  {isLoadingComments ? (
+                    <div className="text-center py-8 text-white/20 text-xs">加载中...</div>
+                  ) : comments.length === 0 ? (
+                    <div className="flex flex-col h-full items-center justify-center text-white/10 text-center px-6">
+                      <MessageSquare className="w-10 h-10 mb-4 opacity-5" />
+                      <span className="text-xs font-semibold tracking-wide uppercase opacity-30">暂无评论</span>
+                      <p className="text-[10px] mt-2 opacity-20">协作者可以在这里发表评论</p>
+                    </div>
+                  ) : (
+                    comments.map((comment) => (
+                      <div key={comment.id} className="p-3 bg-white/5 rounded-xl border border-white/5">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            {comment.avatarUrl ? (
+                              <img src={comment.avatarUrl} alt="" className="w-5 h-5 rounded-full" />
+                            ) : (
+                              <div className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center text-[8px] text-white/50">
+                                {comment.username.charAt(0).toUpperCase()}
+                              </div>
+                            )}
+                            <span className="text-xs font-medium text-white/70">{comment.username}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] text-white/30">
+                              {new Date(comment.createdAt).toLocaleDateString()}
+                            </span>
+                            {currentUser?.id === comment.userId && (
+                              <button
+                                onClick={() => setCommentToDelete(comment)}
+                                className="p-1 hover:bg-red-500/10 rounded text-white/20 hover:text-red-400 transition-colors"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                        <p className="text-xs text-white/60 leading-relaxed">{comment.content}</p>
+                        <button
+                          onClick={() => setReplyTo(comment)}
+                          className="mt-2 text-[10px] text-white/30 hover:text-white/60 transition-colors"
+                        >
+                          回复
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+                <div className="p-3 border-t border-white/5">
+                  {replyTo && (
+                    <div className="flex items-center justify-between mb-2 px-2 py-1 bg-white/5 rounded">
+                      <span className="text-[10px] text-white/40">回复 @{replyTo.username}</span>
+                      <button
+                        onClick={() => setReplyTo(null)}
+                        className="text-white/30 hover:text-white/60"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  )}
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={commentInput}
+                      onChange={(e) => setCommentInput(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handlePostComment()}
+                      placeholder="发表评论..."
+                      className="flex-1 bg-[#0c0c0e] border border-white/10 rounded-lg px-3 py-2 text-xs text-white/80 placeholder:text-white/30 focus:outline-none focus:border-white/30"
+                    />
+                    <button
+                      onClick={handlePostComment}
+                      disabled={!commentInput.trim()}
+                      className="p-2 bg-white text-black rounded-lg hover:bg-white/90 transition-colors disabled:opacity-40"
+                    >
+                      <Send className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
               </div>
             )}
             {activeTab === 'ai' && (
@@ -159,6 +397,43 @@ const EditorSidebar: React.FC<EditorSidebarProps> = ({
           </div>
         </div>
       )}
+      
+      {/* Version Create Modal */}
+      <InputModal
+        isOpen={showVersionModal}
+        onClose={() => setShowVersionModal(false)}
+        onConfirm={handleCreateVersion}
+        title="创建新版本"
+        placeholder="输入版本提交信息..."
+        confirmText="创建"
+        cancelText="取消"
+      />
+      
+      {/* Rollback Confirm Modal */}
+      <ConfirmModal
+        isOpen={!!versionToRollback}
+        onClose={() => setVersionToRollback(null)}
+        onConfirm={handleRollback}
+        title="回滚版本"
+        message={versionToRollback 
+          ? `确定要回滚到版本 v${versionToRollback.versionNumber} 吗？当前内容将被替换。` 
+          : ''}
+        confirmText="回滚"
+        cancelText="取消"
+        type="warning"
+      />
+      
+      {/* Delete Comment Confirm Modal */}
+      <ConfirmModal
+        isOpen={!!commentToDelete}
+        onClose={() => setCommentToDelete(null)}
+        onConfirm={handleDeleteComment}
+        title="删除评论"
+        message="确定要删除这条评论吗？此操作无法撤销。"
+        confirmText="删除"
+        cancelText="取消"
+        type="danger"
+      />
     </>
   );
 };

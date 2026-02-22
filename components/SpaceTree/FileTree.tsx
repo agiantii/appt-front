@@ -14,6 +14,7 @@ import {
   Plus
 } from 'lucide-react';
 import { Slide, FileTreeNode } from '../../types';
+import { ConfirmModal, InputModal } from '../Common/Modal';
 
 interface FileTreeProps {
   data: Slide[];
@@ -31,6 +32,12 @@ const FileTree: React.FC<FileTreeProps> = ({ data, onSelect, onUpdate, onAddChil
   const [draggedId, setDraggedId] = useState<number | null>(null);
   const [dropTargetId, setDropTargetId] = useState<number | null>(null);
   const [activeMenuId, setActiveMenuId] = useState<number | null>(null);
+  
+  // Modal states
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [slideToDelete, setSlideToDelete] = useState<number | null>(null);
+  const [showRenameModal, setShowRenameModal] = useState(false);
+  const [slideToRename, setSlideToRename] = useState<{id: number; currentTitle: string} | null>(null);
 
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -69,37 +76,39 @@ const FileTree: React.FC<FileTreeProps> = ({ data, onSelect, onUpdate, onAddChil
 
   // --- ACTIONS ---
 
-  const handleRename = async (id: number, newTitle: string) => {
-    if (!newTitle.trim()) {
-      setEditingId(null);
+  const handleRename = async (newTitle: string) => {
+    if (!slideToRename || !newTitle.trim()) {
+      setShowRenameModal(false);
+      setSlideToRename(null);
       return;
     }
     try {
-      const res = await slideApi.update(id, { title: newTitle });
+      const res = await slideApi.update(slideToRename.id, { title: newTitle });
       if (res.statusCode === 0) {
-        const updated = localSlides.map(s => s.id === id ? res.data : s);
+        const updated = localSlides.map(s => s.id === slideToRename.id ? res.data : s);
         setLocalSlides(updated);
         if (onUpdate) onUpdate(updated);
       }
     } catch (err) {
       console.error(err);
     }
-    setEditingId(null);
+    setShowRenameModal(false);
+    setSlideToRename(null);
     setActiveMenuId(null);
   };
 
-  const handleDelete = async (id: number) => {
-    if (!window.confirm("Confirm deletion of this document and all its children? This action cannot be undone.")) return;
+  const handleDelete = async () => {
+    if (!slideToDelete) return;
 
     try {
-      const res = await slideApi.remove(id);
+      const res = await slideApi.remove(slideToDelete);
       if (res.statusCode === 0) {
         const idsToDelete = new Set<number>();
         const findChildrenRecursive = (parentId: number) => {
           idsToDelete.add(parentId);
           localSlides.filter(s => s.parentId === parentId).forEach(child => findChildrenRecursive(child.id));
         };
-        findChildrenRecursive(id);
+        findChildrenRecursive(slideToDelete);
 
         const updated = localSlides.filter(s => !idsToDelete.has(s.id));
         setLocalSlides(updated);
@@ -108,6 +117,20 @@ const FileTree: React.FC<FileTreeProps> = ({ data, onSelect, onUpdate, onAddChil
     } catch (err) {
       console.error(err);
     }
+    setShowDeleteModal(false);
+    setSlideToDelete(null);
+    setActiveMenuId(null);
+  };
+  
+  const openDeleteModal = (id: number) => {
+    setSlideToDelete(id);
+    setShowDeleteModal(true);
+    setActiveMenuId(null);
+  };
+  
+  const openRenameModal = (id: number, currentTitle: string) => {
+    setSlideToRename({ id, currentTitle });
+    setShowRenameModal(true);
     setActiveMenuId(null);
   };
 
@@ -215,8 +238,16 @@ const FileTree: React.FC<FileTreeProps> = ({ data, onSelect, onUpdate, onAddChil
               className="flex-1 bg-white/10 border border-white/30 rounded px-1.5 py-0.5 text-xs focus:outline-none focus:ring-1 focus:ring-white/40"
               value={editValue}
               onChange={(e) => setEditValue(e.target.value)}
-              onBlur={() => handleRename(node.id, editValue)}
-              onKeyDown={(e) => e.key === 'Enter' && handleRename(node.id, editValue)}
+              onBlur={() => {
+                setSlideToRename({ id: node.id, currentTitle: node.title });
+                setShowRenameModal(true);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  setSlideToRename({ id: node.id, currentTitle: node.title });
+                  setShowRenameModal(true);
+                }
+              }}
               onClick={(e) => e.stopPropagation()}
             />
           ) : (
@@ -255,9 +286,8 @@ const FileTree: React.FC<FileTreeProps> = ({ data, onSelect, onUpdate, onAddChil
                 <button 
                   onClick={(e) => {
                     e.stopPropagation();
-                    setEditingId(node.id);
-                    setEditValue(node.title);
-                    setActiveMenuId(null);
+                    openRenameModal(node.id, node.title);
+                    setEditingId(null);
                   }}
                   className="w-full flex items-center gap-2 px-3 py-2 text-xs text-white/70 hover:bg-white/10 transition-colors"
                 >
@@ -267,7 +297,7 @@ const FileTree: React.FC<FileTreeProps> = ({ data, onSelect, onUpdate, onAddChil
                 <button 
                   onClick={(e) => {
                     e.stopPropagation();
-                    handleDelete(node.id);
+                    openDeleteModal(node.id);
                   }}
                   className="w-full flex items-center gap-2 px-3 py-2 text-xs text-red-400 hover:bg-red-400/10 transition-colors"
                 >
@@ -327,6 +357,36 @@ const FileTree: React.FC<FileTreeProps> = ({ data, onSelect, onUpdate, onAddChil
           ))
         )}
       </div>
+      
+      {/* Delete Confirm Modal */}
+      <ConfirmModal
+        isOpen={showDeleteModal}
+        onClose={() => {
+          setShowDeleteModal(false);
+          setSlideToDelete(null);
+        }}
+        onConfirm={handleDelete}
+        title="删除文档"
+        message="确定要删除此文档及其所有子文档吗？此操作无法撤销。"
+        confirmText="删除"
+        cancelText="取消"
+        type="danger"
+      />
+      
+      {/* Rename Input Modal */}
+      <InputModal
+        isOpen={showRenameModal}
+        onClose={() => {
+          setShowRenameModal(false);
+          setSlideToRename(null);
+        }}
+        onConfirm={handleRename}
+        title="重命名文档"
+        placeholder="输入新名称..."
+        defaultValue={slideToRename?.currentTitle || ''}
+        confirmText="确认"
+        cancelText="取消"
+      />
     </div>
   );
 };

@@ -79,3 +79,20 @@ export interface SlidePageInfo {
   preview: string;
   lineStart: number;
 }
+
+export interface Version {
+  id: number;
+  versionNumber: number;
+  slideId: number;
+  content: string;
+  commitMsg: string;
+  createdBy: number;
+  creatorName: string;
+  createdAt: string;
+}
+
+export interface ConnectionInfo {
+  url: string;
+  docName: string;
+  token: string;
+}

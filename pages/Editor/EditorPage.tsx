@@ -16,7 +16,7 @@ import {
 import { slideApi } from '../../api/slide';
 import { snippetApi } from '../../api/snippet';
 import { userApi } from '../../api/user';
-import { SidebarTab, Slide, Snippet, User } from '../../types';
+import { SidebarTab, Slide, Snippet, User, ConnectionInfo } from '../../types';
 import ResizableLayout from '../../components/Editor/ResizablePanels';
 import { GoogleGenAI } from '@google/genai';
 
@@ -125,6 +125,7 @@ const EditorPage: React.FC = () => {
   const [previewOpen, setPreviewOpen] = useState(true);
   const [content, setContent] = useState<string | null>('');
   const [collaborators, setCollaborators] = useState<User[]>([]);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [chatInput, setChatInput] = useState('');
   const [chatHistory, setChatHistory] = useState<{role: 'user'|'ai', text: string}[]>([]);
@@ -152,6 +153,9 @@ const EditorPage: React.FC = () => {
     snippetApi.findAll().then(res => {
       if (res.statusCode === 0) setSnippets(res.data);
     });
+    userApi.getCurrentUser().then(res => {
+      if (res.statusCode === 0) setCurrentUser(res.data);
+    });
   }, [slideSpaceId, slideId]);
 
   const slidePages = useSlideParser(content);
@@ -172,6 +176,7 @@ const EditorPage: React.FC = () => {
   const providerRef = useRef<HocuspocusProvider | null>(null);
   const yTextRef = useRef<Y.Text | null>(null);
   const initialContentRef = useRef<string>('');
+  const [connectionInfo, setConnectionInfo] = useState<ConnectionInfo | null>(null);
   
   useEffect(() => {
     if (currentSlide?.content) {
@@ -179,8 +184,19 @@ const EditorPage: React.FC = () => {
     }
   }, [currentSlide?.content]);
   
+  // Fetch WebSocket connection info from backend
   useEffect(() => {
     if (!slideId) return;
+    
+    slideApi.getConnectionInfo(Number(slideId)).then(res => {
+      if (res.statusCode === 0) {
+        setConnectionInfo(res.data);
+      }
+    });
+  }, [slideId]);
+  
+  useEffect(() => {
+    if (!slideId || !connectionInfo) return;
     
     if (providerRef.current) providerRef.current.destroy();
     if (ydocRef.current) ydocRef.current.destroy();
@@ -191,13 +207,20 @@ const EditorPage: React.FC = () => {
     yTextRef.current = yText;
     
     const provider = new HocuspocusProvider({
-      url: 'ws://localhost:1234',
-      name: `slide-${slideId}`,
+      url: connectionInfo.url,
+      name: connectionInfo.docName,
       document: ydoc,
+      token: connectionInfo.token,
       onSynced: () => {
         if (yText && yText.toString().length === 0 && initialContentRef.current) {
           yText.insert(0, initialContentRef.current);
         }
+      },
+      onConnect: () => {
+        console.log('[WebSocket] Connected to:', connectionInfo.docName);
+      },
+      onDisconnect: () => {
+        console.log('[WebSocket] Disconnected from:', connectionInfo.docName);
       },
     });
     
@@ -217,7 +240,7 @@ const EditorPage: React.FC = () => {
       provider.destroy();
       ydoc.destroy();
     };
-  }, [slideId]);
+  }, [slideId, connectionInfo]);
 
   const insertSnippet = useCallback((code: string) => {
     if (editorViewRef.current) {
@@ -434,6 +457,18 @@ const EditorPage: React.FC = () => {
         chatInput={chatInput}
         setChatInput={setChatInput}
         onSendChat={handleAiChat}
+        slideId={slideId}
+        currentUser={currentUser}
+        onVersionRollback={(rolledBackContent) => {
+          setContent(rolledBackContent);
+          // Update editor content
+          if (editorViewRef.current) {
+            const view = editorViewRef.current;
+            view.dispatch({
+              changes: { from: 0, to: view.state.doc.length, insert: rolledBackContent }
+            });
+          }
+        }}
       />
       <div className="flex-1 flex flex-col min-w-0">
         <EditorHeader 
