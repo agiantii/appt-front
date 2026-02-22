@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, 
@@ -11,7 +11,8 @@ import {
   Zap,
   User as UserIcon
 } from 'lucide-react';
-import { mockUser, mockSlideSpaces } from '../../data/mock';
+import { spaceApi } from '../../api/space';
+import { SlideSpace } from '../../types';
 
 interface DashboardLayoutProps {
   onLogout: () => void;
@@ -21,6 +22,17 @@ interface DashboardLayoutProps {
 const DashboardLayout: React.FC<DashboardLayoutProps> = ({ onLogout, onAuthClick }) => {
   const location = useLocation();
   const isAuthenticated = !!localStorage.getItem('token');
+  const [spaces, setSpaces] = useState<SlideSpace[]>([]);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      spaceApi.findAll().then(res => {
+        if (res.statusCode === 0) {
+          setSpaces(res.data.items);
+        }
+      });
+    }
+  }, [isAuthenticated]);
 
   const navItems = [
     { label: 'Start', path: '/dashboard/start', icon: LayoutDashboard, authRequired: true },
@@ -65,9 +77,9 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ onLogout, onAuthClick
                 </button>
               </div>
               <div className="space-y-1">
-                {mockSlideSpaces.map(space => (
+                {spaces.map(space => (
                   <Link
-                    key={space.id}
+                    key={`sidebar-space-${space.id}`}
                     to={`/slide/${space.id}`}
                     className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-white/50 hover:text-white hover:bg-white/5 transition-colors"
                   >

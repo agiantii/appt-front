@@ -13,7 +13,9 @@ import {
   ArrowRight,
   Zap
 } from 'lucide-react';
-import { mockSlides, mockUser, mockSnippets } from '../../data/mock';
+import { slideApi } from '../../api/slide';
+import { snippetApi } from '../../api/snippet';
+import { userApi } from '../../api/user';
 import { SidebarTab, Slide, Snippet, User } from '../../types';
 import ResizableLayout from '../../components/Editor/ResizablePanels';
 import { GoogleGenAI } from '@google/genai';
@@ -116,25 +118,43 @@ const EditorPage: React.FC = () => {
   const editorViewRef = useRef<EditorView | null>(null);
   const outlineScrollRef = useRef<HTMLDivElement>(null);
   
-  const [slides, setSlides] = useState<Slide[]>(mockSlides);
-  const [currentSlide, setCurrentSlide] = useState<Slide>(slides.find(s => s.id === Number(slideId)) || slides[0]);
+  const [slides, setSlides] = useState<Slide[]>([]);
+  const [currentSlide, setCurrentSlide] = useState<Slide | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activeTab, setActiveTab] = useState<SidebarTab>('explorer');
   const [previewOpen, setPreviewOpen] = useState(true);
-  const [content, setContent] = useState(currentSlide.content);
-  const [collaborators] = useState<User[]>([mockUser]);
+  const [content, setContent] = useState<string | null>('');
+  const [collaborators, setCollaborators] = useState<User[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [chatInput, setChatInput] = useState('');
   const [chatHistory, setChatHistory] = useState<{role: 'user'|'ai', text: string}[]>([]);
   const [previewMode, setPreviewMode] = useState<'dev' | 'build'>('dev');
   const [outlineHeight, setOutlineHeight] = useState(240);
+  const [snippets, setSnippets] = useState<Snippet[]>([]);
+
+  useEffect(() => {
+    if (slideSpaceId) {
+      slideApi.findAllBySpace(Number(slideSpaceId)).then(res => {
+        if (res.statusCode === 0) setSlides(res.data);
+      });
+    }
+    if (slideId) {
+      slideApi.findOne(Number(slideId)).then(res => {
+        if (res.statusCode === 0) {
+          setCurrentSlide(res.data);
+          setContent(res.data.content);
+        }
+      });
+      slideApi.getCollaborators(Number(slideId)).then(res => {
+        if (res.statusCode === 0) setCollaborators(res.data);
+      });
+    }
+    snippetApi.findAll().then(res => {
+      if (res.statusCode === 0) setSnippets(res.data);
+    });
+  }, [slideSpaceId, slideId]);
 
   const slidePages = useSlideParser(content);
-
-  const snippets = useMemo<Snippet[]>(() => {
-    const saved = localStorage.getItem('user-snippets');
-    return saved ? JSON.parse(saved) : mockSnippets;
-  }, []);
 
   // Keyboard shortcut for sidebar toggle: Ctrl+B
   useEffect(() => {
@@ -182,10 +202,16 @@ const EditorPage: React.FC = () => {
     });
     
     providerRef.current = provider;
-    provider.setAwarenessField('user', { 
-      name: mockUser.name, 
-      color: '#' + Math.floor(Math.random() * 16777215).toString(16) 
-    });
+    const fetchUser = async () => {
+      const res = await userApi.getCurrentUser();
+      if (res.statusCode === 0) {
+        provider.setAwarenessField('user', { 
+          name: res.data.username, 
+          color: '#' + Math.floor(Math.random() * 16777215).toString(16) 
+        });
+      }
+    };
+    fetchUser();
     
     return () => {
       provider.destroy();
@@ -302,10 +328,17 @@ const EditorPage: React.FC = () => {
     };
   }, [slideId, manualBasicSetup, snippetCompletionSource]);
 
-  const handleSave = useCallback(() => {
+  const handleSave = useCallback(async () => {
+    if (!slideId) return;
     setIsSaving(true);
-    setTimeout(() => setIsSaving(false), 800);
-  }, []);
+    try {
+      await slideApi.saveContent(Number(slideId), content);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsSaving(false);
+    }
+  }, [slideId, content]);
 
   const handleAiChat = async () => {
     if (!chatInput.trim()) return;
@@ -314,7 +347,7 @@ const EditorPage: React.FC = () => {
     setChatHistory(prev => [...prev, { role: 'user', text: userText }]);
 
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
       const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
         contents: `You are an expert Slidev designer. Help the user edit this presentation:\n\nContent:\n${content}\n\nUser Request: ${userText}`,
@@ -342,21 +375,23 @@ const EditorPage: React.FC = () => {
     }
   }, []);
 
-  const handleAddSlide = (parentId: number | null) => {
-    const newId = Math.max(0, ...slides.map(s => s.id)) + 1;
-    const newSlide: Slide = {
-      id: newId,
-      title: 'New Slide',
-      content: '---\n# New Slide\nContent...',
-      slide_space_id: Number(slideSpaceId),
-      parent_id: parentId,
-      is_public: false,
-      allow_comment: true,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    };
-    setSlides([...slides, newSlide]);
-    navigate(`/slide/${slideSpaceId}/${newId}`);
+  const handleAddSlide = async (parentId: number | null) => {
+    try {
+      const res = await slideApi.create({
+        title: 'New Slide',
+        slideSpaceId: Number(slideSpaceId),
+        parentId,
+        content: '---\n# New Slide\nContent...',
+        isPublic: false,
+        allowComment: true
+      });
+      if (res.statusCode === 0) {
+        setSlides([...slides, res.data]);
+        navigate(`/slide/${slideSpaceId}/${res.data.id}`);
+      }
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const editorCenter = (
@@ -377,7 +412,7 @@ const EditorPage: React.FC = () => {
            <div className="flex items-center gap-2 hover:text-white transition-colors cursor-pointer"><Layout className="w-3.5 h-3.5" /> Layouts</div>
            <div className="flex items-center gap-2 hover:text-white transition-colors cursor-pointer"><SettingsIcon className="w-3.5 h-3.5" /> Config</div>
         </div>
-        <div>Ln {content ? content.split('\n').length : 0}, Col {content ? content.length : 0}</div>
+        <div>Ln {content?.split('\n').length || 0}, Col {content?.length || 0}</div>
       </div>
     </div>
   );

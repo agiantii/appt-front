@@ -6,7 +6,7 @@ import { SlidePageInfo } from '../../../types';
 interface EditorPreviewProps {
   previewMode: 'dev' | 'build';
   setPreviewMode: (mode: 'dev' | 'build') => void;
-  content: string;
+  content: string | null | undefined;
   outlineHeight: number;
   onOutlineResize: (e: React.MouseEvent) => void;
   slidePages: SlidePageInfo[];
@@ -19,7 +19,7 @@ const EditorPreview: React.FC<EditorPreviewProps> = ({
   previewMode, setPreviewMode, content, outlineHeight, onOutlineResize,
   slidePages, onJumpToSlide, onScrollOutline, outlineScrollRef
 }) => {
-  const currentTitle = content.split('\n').find(l => l.startsWith('# '))?.replace('# ', '') || 'New Presentation';
+  const currentTitle = content?.split('\n').find(l => l.startsWith('# '))?.replace('# ', '') || 'New Presentation';
 
   return (
     <div className="flex flex-col h-full min-w-0">

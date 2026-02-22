@@ -5,7 +5,7 @@ import { Share2, Save, CheckCircle2, Eye, Play } from 'lucide-react';
 import { Slide, User } from '../../../types';
 
 interface EditorHeaderProps {
-  currentSlide: Slide;
+  currentSlide: Slide | null;
   collaborators: User[];
   isSaving: boolean;
   onSave: () => void;
@@ -28,13 +28,13 @@ const EditorHeader: React.FC<EditorHeaderProps> = ({
       <div className="flex items-center gap-10">
         <div className="flex flex-col">
           <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.25em]">Project Space</span>
-          <span className="text-sm font-bold truncate max-w-[300px] text-white/90">{currentSlide.title}</span>
+          <span className="text-sm font-bold truncate max-w-[300px] text-white/90">{currentSlide?.title || 'Loading...'}</span>
         </div>
         <div className="h-6 w-px bg-white/5" />
         <div className="flex items-center gap-4">
           <div className="flex -space-x-3">
             {collaborators.map(c => (
-              <img key={c.id} src={c.avatar} className="w-8 h-8 rounded-full border-4 border-[#09090b] shadow-2xl transition-transform hover:-translate-y-1 cursor-pointer" title={c.name} />
+              <img key={c.id} src={c.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${c.username}`} className="w-8 h-8 rounded-full border-4 border-[#09090b] shadow-2xl transition-transform hover:-translate-y-1 cursor-pointer" title={c.username} />
             ))}
             <div className="w-8 h-8 rounded-full bg-[#18181b] border-4 border-[#09090b] flex items-center justify-center text-[10px] font-black text-white/20 hover:text-white transition-all cursor-pointer">
               +3

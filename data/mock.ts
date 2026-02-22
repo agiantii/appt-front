@@ -1,17 +1,19 @@
-
 import { Slide, SlideSpace, User, Snippet } from '../types';
 
 export const mockUser: User = {
-  id: 'user-1',
-  name: 'Alex Rivera',
-  avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Alex',
-  email: 'alex@example.com'
+  id: 1,
+  username: 'Alex Rivera',
+  avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Alex',
+  email: 'alex@example.com',
+  state: 1,
+  createdAt: '2024-01-01',
+  updatedAt: '2024-01-01'
 };
 
 export const mockSlideSpaces: SlideSpace[] = [
-  { id: 1, name: 'Product Roadmap 2025', description: 'Internal roadmap for Q1-Q4 product strategy and feature rollout.', url: 'roadmap-2025', owner_id: 'user-1' },
-  { id: 2, name: 'Marketing Assets', description: 'Campaign slides, brand materials, and social media templates.', url: 'marketing', owner_id: 'user-1' },
-  { id: 3, name: 'Engineering Docs', description: 'System design, architecture diagrams, and onboarding slides.', url: 'engineering', owner_id: 'user-1' },
+  { id: 1, name: 'Product Roadmap 2025', isPublic: false, ownerId: 1, createdAt: '2024-01-01' },
+  { id: 2, name: 'Marketing Assets', isPublic: false, ownerId: 1, createdAt: '2024-01-01' },
+  { id: 3, name: 'Engineering Docs', isPublic: false, ownerId: 1, createdAt: '2024-01-01' },
 ];
 
 export const mockSlides: Slide[] = [
@@ -19,43 +21,53 @@ export const mockSlides: Slide[] = [
     id: 1, 
     title: 'Introduction', 
     content: '---\ntheme: seriph\n---\n# Welcome to Slidev\nThis is the first page.\n\n---\n# Page 2\nContent here about the vision...', 
-    slide_space_id: 1, 
-    parent_id: null, 
-    is_public: true, 
-    allow_comment: true, 
-    created_at: '2024-01-01', 
-    updated_at: '2024-01-01' 
+    slideSpaceId: 1, 
+    parentId: null, 
+    isPublic: true, 
+    allowComment: true, 
+    createdAt: '2024-01-01', 
+    updatedAt: '2024-01-01' 
   },
-  { id: 2, title: 'Features Deep Dive', content: '---\nlayout: center\n---\n# Key Features\n- Real-time collaboration\n- AI Assistant\n- VS Code integration', slide_space_id: 1, parent_id: 1, is_public: false, allow_comment: true, created_at: '2024-01-02', updated_at: '2024-01-02' },
-  { id: 3, title: 'Pricing Table', content: '# Pricing Models\nCompare our basic vs pro plans.', slide_space_id: 1, parent_id: 1, is_public: false, allow_comment: false, created_at: '2024-01-03', updated_at: '2024-01-03' },
-  { id: 4, title: 'Executive Overview', content: '# Executive Summary\nSummary for the stakeholders.', slide_space_id: 1, parent_id: null, is_public: true, allow_comment: true, created_at: '2024-01-04', updated_at: '2024-01-04' },
+  { id: 2, title: 'Features Deep Dive', content: '---\nlayout: center\n---\n# Key Features\n- Real-time collaboration\n- AI Assistant\n- VS Code integration', slideSpaceId: 1, parentId: 1, isPublic: false, allowComment: true, createdAt: '2024-01-02', updatedAt: '2024-01-02' },
+  { id: 3, title: 'Pricing Table', content: '# Pricing Models\nCompare our basic vs pro plans.', slideSpaceId: 1, parentId: 1, isPublic: false, allowComment: false, createdAt: '2024-01-03', updatedAt: '2024-01-03' },
+  { id: 4, title: 'Executive Overview', content: '# Executive Summary\nSummary for the stakeholders.', slideSpaceId: 1, parentId: null, isPublic: true, allowComment: true, createdAt: '2024-01-04', updatedAt: '2024-01-04' },
 ];
 
 export const mockSnippets: Snippet[] = [
   { 
-    id: 's1', 
+    id: 1, 
     name: 'Slidev: Center Layout', 
-    code: '---\nlayout: center\n---\n# Title\nContent goes here...' 
+    content: '---\nlayout: center\n---\n# Title\nContent goes here...',
+    createdAt: '2024-01-01',
+    updatedAt: '2024-01-01'
   },
   { 
-    id: 's2', 
+    id: 2, 
     name: 'Slidev: Two Columns', 
-    code: '---\nlayout: two-cols\n---\n# Title\n\n::left::\nLeft content\n\n::right::\nRight content' 
+    content: '---\nlayout: two-cols\n---\n# Title\n\n::left::\nLeft content\n\n::right::\nRight content',
+    createdAt: '2024-01-01',
+    updatedAt: '2024-01-01'
   },
   { 
-    id: 's3', 
+    id: 3, 
     name: 'Vue: Counter Component', 
-    code: '<script setup>\nimport { ref } from "vue"\nconst count = ref(0)\n</script>\n\n<template>\n  <button @click="count++">{{ count }}</button>\n</template>' 
+    content: '<script setup>\nimport { ref } from "vue"\nconst count = ref(0)\n</script>\n\n<template>\n  <button @click="count++">{{ count }}</button>\n</template>',
+    createdAt: '2024-01-01',
+    updatedAt: '2024-01-01'
   },
   { 
-    id: 's4', 
+    id: 4, 
     name: 'Slidev: Click Animations', 
-    code: '<ul>\n  <li v-click>First item</li>\n  <li v-click>Second item</li>\n  <li v-click>Third item</li>\n</ul>' 
+    content: '<ul>\n  <li v-click>First item</li>\n  <li v-click>Second item</li>\n  <li v-click>Third item</li>\n</ul>',
+    createdAt: '2024-01-01',
+    updatedAt: '2024-01-01'
   },
-    { 
-    id: 's5', 
+  { 
+    id: 5, 
     name: 'Slidev: Template', 
-    code: '---\n theme: default \n --- \n #slide 1' 
+    content: '---\n theme: default \n --- \n #slide 1',
+    createdAt: '2024-01-01',
+    updatedAt: '2024-01-01'
   }
 ];
 

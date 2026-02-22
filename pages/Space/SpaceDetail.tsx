@@ -2,32 +2,43 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Settings, Plus, Search, Filter, LayoutGrid, List, ArrowLeft, MoreVertical as MoreIcon, ChevronRight, ChevronDown, Share2, FolderOpen, FileText, Zap as ZapIcon } from 'lucide-react';
-import { mockSlideSpaces, mockSlides } from '../../data/mock';
+import { spaceApi } from '../../api/space';
+import { slideApi } from '../../api/slide';
 import FileTree from '../../components/SpaceTree/FileTree';
-import { Slide, FileTreeNode } from '../../types';
+import { Slide, FileTreeNode, SlideSpace } from '../../types';
 
 const SpaceDetail: React.FC = () => {
   const { slideSpaceId } = useParams();
   const navigate = useNavigate();
-  const space = mockSlideSpaces.find(s => s.id === Number(slideSpaceId));
+  const [space, setSpace] = useState<SlideSpace | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
-  const [slides, setSlides] = useState<Slide[]>(mockSlides);
+  const [slides, setSlides] = useState<Slide[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedNodes, setExpandedNodes] = useState<Record<number, boolean>>({});
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const filtered = mockSlides.filter(s => s.slide_space_id === Number(slideSpaceId));
-    setSlides(filtered);
-    // Expand all by default for the main view
-    const initialExpanded: Record<number, boolean> = {};
-    filtered.forEach(s => initialExpanded[s.id] = true);
-    setExpandedNodes(initialExpanded);
+    if (slideSpaceId) {
+      setLoading(true);
+      Promise.all([
+        spaceApi.findOne(Number(slideSpaceId)),
+        slideApi.findAllBySpace(Number(slideSpaceId))
+      ]).then(([spaceRes, slidesRes]) => {
+        if (spaceRes.statusCode === 0) setSpace(spaceRes.data);
+        if (slidesRes.statusCode === 0) {
+          setSlides(slidesRes.data);
+          const initialExpanded: Record<number, boolean> = {};
+          slidesRes.data.forEach((s: any) => initialExpanded[s.id] = true);
+          setExpandedNodes(initialExpanded);
+        }
+      }).finally(() => setLoading(false));
+    }
   }, [slideSpaceId]);
 
   const treeData = useMemo(() => {
     const buildTree = (nodes: Slide[], parentId: number | null = null): FileTreeNode[] => {
       return nodes
-        .filter(node => node.parent_id === parentId)
+        .filter(node => node.parentId === parentId)
         .sort((a, b) => a.title.localeCompare(b.title, undefined, { numeric: true }))
         .map(node => ({
           ...node,
@@ -36,6 +47,8 @@ const SpaceDetail: React.FC = () => {
     };
     return buildTree(slides.filter(s => s.title.toLowerCase().includes(searchQuery.toLowerCase())));
   }, [slides, searchQuery]);
+
+  if (loading) return <div className="flex items-center justify-center h-full text-white/40">Loading space...</div>;
 
   if (!space) return (
     <div className="flex items-center justify-center h-full text-white/40">
@@ -47,23 +60,24 @@ const SpaceDetail: React.FC = () => {
     setSlides(updated);
   };
 
-  const handleAddSlide = (parentId: number | null = null) => {
-    const newId = Math.max(0, ...slides.map(s => s.id)) + 1;
-    const newSlide: Slide = {
-      id: newId,
-      title: 'Untitled Presentation',
-      content: '---\ntheme: seriph\n---\n# New Content\nStart typing...',
-      slide_space_id: Number(slideSpaceId),
-      parent_id: parentId,
-      is_public: false,
-      allow_comment: true,
-      created_at: new Date().toISOString().split('T')[0],
-      updated_at: new Date().toISOString().split('T')[0]
-    };
-    
-    const updated = [...slides, newSlide];
-    setSlides(updated);
-    navigate(`/slide/${slideSpaceId}/${newId}`);
+  const handleAddSlide = async (parentId: number | null = null) => {
+    try {
+      const res = await slideApi.create({
+        title: 'Untitled Presentation',
+        slideSpaceId: Number(slideSpaceId),
+        parentId,
+        content: '---\ntheme: seriph\n---\n# New Content\nStart typing...',
+        isPublic: false,
+        allowComment: true
+      });
+      
+      if (res.statusCode === 0) {
+        setSlides([...slides, res.data]);
+        navigate(`/slide/${slideSpaceId}/${res.data.id}`);
+      }
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const toggleNode = (id: number) => {
@@ -93,7 +107,7 @@ const SpaceDetail: React.FC = () => {
             <div className="flex-1 border-b border-dotted border-white/5 mx-4 min-w-[20px]" />
           </div>
           <div className="text-[11px] font-mono text-white/20 group-hover:text-white/40 transition-colors whitespace-nowrap">
-            {node.updated_at}
+            {new Date(node.updatedAt).toLocaleDateString()}
           </div>
         </div>
         {hasChildren && isExpanded && (
@@ -245,7 +259,7 @@ const SpaceDetail: React.FC = () => {
                     <div className="flex items-center justify-between">
                       <div className="flex flex-col">
                         <span className="text-[10px] text-white/20 font-black uppercase tracking-widest">Last Update</span>
-                        <span className="text-xs font-bold text-white/40">{slide.updated_at}</span>
+                        <span className="text-xs font-bold text-white/40">{new Date(slide.updatedAt).toLocaleDateString()}</span>
                       </div>
                       <div className="flex -space-x-2">
                         <img src={`https://api.dicebear.com/7.x/initials/svg?seed=${slide.id}`} className="w-7 h-7 rounded-full border-2 border-[#0c0c0e]" />

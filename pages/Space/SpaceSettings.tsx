@@ -1,14 +1,65 @@
 
-import React from 'react';
-import { Routes, Route, Link, useParams, useLocation, Navigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Routes, Route, Link, useParams, useLocation, Navigate, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Globe, FileText, Shield, Trash2, Save } from 'lucide-react';
-import { mockSlideSpaces, mockSlides } from '../../data/mock';
+import { spaceApi } from '../../api/space';
+import { slideApi } from '../../api/slide';
+import { SlideSpace, Slide } from '../../types';
 
 const SpaceSettings: React.FC = () => {
   const { slideSpaceId } = useParams();
+  const navigate = useNavigate();
   const location = useLocation();
-  const space = mockSlideSpaces.find(s => s.id === Number(slideSpaceId));
+  const [space, setSpace] = useState<SlideSpace | null>(null);
+  const [slides, setSlides] = useState<Slide[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [formData, setFormData] = useState({ name: '', isPublic: false });
 
+  useEffect(() => {
+    if (slideSpaceId) {
+      setLoading(true);
+      Promise.all([
+        spaceApi.findOne(Number(slideSpaceId)),
+        slideApi.findAllBySpace(Number(slideSpaceId))
+      ]).then(([spaceRes, slidesRes]) => {
+        if (spaceRes.statusCode === 0) {
+          setSpace(spaceRes.data);
+          setFormData({
+            name: spaceRes.data.name,
+            isPublic: spaceRes.data.isPublic
+          });
+        }
+        if (slidesRes.statusCode === 0) setSlides(slidesRes.data);
+      }).finally(() => setLoading(false));
+    }
+  }, [slideSpaceId]);
+
+  const handleSave = async () => {
+    if (!slideSpaceId) return;
+    try {
+      const res = await spaceApi.update(Number(slideSpaceId), formData);
+      if (res.statusCode === 0) {
+        setSpace(res.data);
+        alert('Settings saved successfully');
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleDeleteSpace = async () => {
+    if (!slideSpaceId || !window.confirm('Are you sure you want to delete this space? All slides will be lost.')) return;
+    try {
+      const res = await spaceApi.remove(Number(slideSpaceId));
+      if (res.statusCode === 0) {
+        navigate('/dashboard');
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  if (loading) return <div className="flex items-center justify-center h-full text-white/40">Loading settings...</div>;
   if (!space) return <div>Space not found</div>;
 
   const sidebarLinks = [
@@ -45,7 +96,10 @@ const SpaceSettings: React.FC = () => {
         </nav>
 
         <div className="mt-auto">
-          <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-red-400/60 hover:text-red-400 hover:bg-red-400/5 transition-all">
+          <button 
+            onClick={handleDeleteSpace}
+            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-red-400/60 hover:text-red-400 hover:bg-red-400/5 transition-all"
+          >
             <Trash2 className="w-4 h-4" /> Delete Space
           </button>
         </div>
@@ -65,22 +119,30 @@ const SpaceSettings: React.FC = () => {
               <div className="space-y-6">
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Space Name</label>
-                  <input className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-white/10 transition-all" defaultValue={space.name} />
+                  <input 
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-white/10 transition-all" 
+                    value={formData.name} 
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  />
                 </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Description</label>
-                  <textarea className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-white/10 transition-all h-32" defaultValue={space.description} />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Identifier URL</label>
-                  <div className="flex items-center bg-white/5 border border-white/10 rounded-xl overflow-hidden px-4">
-                    <span className="text-white/30 text-sm">slidev.ai/space/</span>
-                    <input className="flex-1 bg-transparent py-2.5 focus:outline-none text-sm" defaultValue={space.url} />
+                <div className="flex items-center justify-between p-4 bg-white/5 border border-white/10 rounded-xl">
+                  <div>
+                    <div className="text-sm font-medium">Public Visibility</div>
+                    <div className="text-xs text-white/30">Allow anyone to view this space.</div>
                   </div>
+                  <button 
+                    onClick={() => setFormData({ ...formData, isPublic: !formData.isPublic })}
+                    className={`w-12 h-6 rounded-full transition-all relative ${formData.isPublic ? 'bg-white' : 'bg-white/10'}`}
+                  >
+                    <div className={`absolute top-1 w-4 h-4 rounded-full transition-all ${formData.isPublic ? 'right-1 bg-black' : 'left-1 bg-white/40'}`} />
+                  </button>
                 </div>
               </div>
 
-              <button className="flex items-center gap-2 bg-white text-black px-6 py-2.5 rounded-xl font-bold hover:bg-white/90 transition-all">
+              <button 
+                onClick={handleSave}
+                className="flex items-center gap-2 bg-white text-black px-6 py-2.5 rounded-xl font-bold hover:bg-white/90 transition-all"
+              >
                 <Save className="w-4 h-4" /> Save Changes
               </button>
             </div>
@@ -104,16 +166,16 @@ const SpaceSettings: React.FC = () => {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-white/10">
-                      {mockSlides.map(slide => (
+                      {slides.map(slide => (
                         <tr key={slide.id} className="hover:bg-white/5 transition-colors group">
                           <td className="px-6 py-4 font-medium">{slide.title}</td>
                           <td className="px-6 py-4">
-                            <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-widest ${slide.is_public ? 'bg-green-500/20 text-green-400' : 'bg-white/10 text-white/40'}`}>
-                              {slide.is_public ? 'Public' : 'Private'}
+                            <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-widest ${slide.isPublic ? 'bg-green-500/20 text-green-400' : 'bg-white/10 text-white/40'}`}>
+                              {slide.isPublic ? 'Public' : 'Private'}
                             </span>
                           </td>
-                          <td className="px-6 py-4 text-white/40">{slide.allow_comment ? 'Enabled' : 'Disabled'}</td>
-                          <td className="px-6 py-4 text-white/40">{slide.updated_at}</td>
+                          <td className="px-6 py-4 text-white/40">{slide.allowComment ? 'Enabled' : 'Disabled'}</td>
+                          <td className="px-6 py-4 text-white/40">{new Date(slide.updatedAt).toLocaleDateString()}</td>
                           <td className="px-6 py-4 text-right">
                              <button className="p-1 hover:bg-white/10 rounded transition-all opacity-0 group-hover:opacity-100">
                                <MoreHorizontal className="w-4 h-4 text-white/30" />

@@ -1,10 +1,47 @@
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Search, Globe, Palette, Box, BookOpen, Heart, Share2, MoreHorizontal } from 'lucide-react';
-import { exploreItems } from '../../data/mock';
+import { slideApi } from '../../api/slide';
+import { themeApi, pluginApi } from '../../api/discovery';
 
 const ExplorePage: React.FC = () => {
   const [filter, setFilter] = useState<'all' | 'slide' | 'theme' | 'plugin'>('all');
+  const [items, setItems] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        let results: any[] = [];
+        if (filter === 'all' || filter === 'slide') {
+          const res = await slideApi.search({ pageSize: 12 });
+          if (res.statusCode === 0) {
+            results = [...results, ...res.data.items.map(i => ({ ...i, type: 'slide', author: 'Community' }))];
+          }
+        }
+        if (filter === 'all' || filter === 'theme') {
+          const res = await themeApi.findAll();
+          if (res.statusCode === 0) {
+            results = [...results, ...res.data.map(i => ({ ...i, title: i.packageName, type: 'theme', author: 'Official' }))];
+          }
+        }
+        if (filter === 'all' || filter === 'plugin') {
+          const res = await pluginApi.findAll();
+          if (res.statusCode === 0) {
+            results = [...results, ...res.data.map(i => ({ ...i, title: i.packageName, type: 'plugin', author: 'Official' }))];
+          }
+        }
+        setItems(results);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [filter]);
 
   const categories = [
     { id: 'all', label: 'All Resources', icon: Globe },
@@ -12,10 +49,6 @@ const ExplorePage: React.FC = () => {
     { id: 'theme', label: 'System Themes', icon: Palette },
     { id: 'plugin', label: 'Advanced Plugins', icon: Box },
   ];
-
-  const filteredItems = filter === 'all' 
-    ? exploreItems 
-    : exploreItems.filter(item => item.type === filter);
 
   return (
     <div className="max-w-7xl mx-auto p-12 space-y-12 animate-in fade-in slide-in-from-bottom-6 duration-700">
@@ -53,11 +86,11 @@ const ExplorePage: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-        {filteredItems.map(item => (
-          <div key={item.id} className="group bg-[#0c0c0e] border border-white/5 rounded-[32px] overflow-hidden hover:border-white/10 transition-all cursor-pointer flex flex-col hover:shadow-2xl hover:shadow-white/5">
+        {items.map(item => (
+          <div key={`${item.type}-${item.id}`} className="group bg-[#0c0c0e] border border-white/5 rounded-[32px] overflow-hidden hover:border-white/10 transition-all cursor-pointer flex flex-col hover:shadow-2xl hover:shadow-white/5">
             <div className="aspect-[16/11] bg-[#18181b] overflow-hidden relative">
               <img 
-                src={item.preview} 
+                src={item.previewUrl || `https://picsum.photos/seed/${item.id}/400/250`} 
                 alt={item.title} 
                 className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000 opacity-60 group-hover:opacity-100"
               />

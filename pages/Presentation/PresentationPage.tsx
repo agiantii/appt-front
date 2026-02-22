@@ -1,17 +1,50 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Maximize2, ChevronLeft, ChevronRight, MessageCircle, Share2, MoreHorizontal, Send, Play, Heart, Bookmark, Eye } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { mockSlides } from '../../data/mock';
+import { slideApi } from '../../api/slide';
+import { commentApi } from '../../api/comment';
+import { Slide, Comment } from '../../types';
 
 const PresentationPage: React.FC = () => {
   const { slideId } = useParams();
   const navigate = useNavigate();
-  const slide = mockSlides.find(s => s.id === Number(slideId)) || mockSlides[0];
+  const [slide, setSlide] = useState<Slide | null>(null);
+  const [comments, setComments] = useState<Comment[]>([]);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [commentText, setCommentText] = useState("");
   const [liked, setLiked] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (slideId) {
+      setLoading(true);
+      Promise.all([
+        slideApi.findOne(Number(slideId)),
+        commentApi.findAll(Number(slideId))
+      ]).then(([slideRes, commentsRes]) => {
+        if (slideRes.statusCode === 0) setSlide(slideRes.data);
+        if (commentsRes.statusCode === 0) setComments(commentsRes.data.items);
+      }).finally(() => setLoading(false));
+    }
+  }, [slideId]);
+
+  const handlePostComment = async () => {
+    if (!slideId || !commentText.trim()) return;
+    try {
+      const res = await commentApi.create({
+        slideId: Number(slideId),
+        content: commentText
+      });
+      if (res.statusCode === 0) {
+        setComments([res.data, ...comments]);
+        setCommentText("");
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
@@ -22,6 +55,9 @@ const PresentationPage: React.FC = () => {
       setIsFullscreen(false);
     }
   };
+
+  if (loading) return <div className="flex h-screen bg-black items-center justify-center text-white/40">Loading presentation...</div>;
+  if (!slide) return <div className="flex h-screen bg-black items-center justify-center text-white/40">Slide not found</div>;
 
   return (
     <div className="flex h-screen bg-black overflow-hidden select-none font-sans">
@@ -119,16 +155,16 @@ const PresentationPage: React.FC = () => {
         </div>
 
         <div className="flex-1 overflow-y-auto p-10 space-y-10 custom-scrollbar">
-          {[1, 2, 3, 4, 5].map(i => (
-            <div key={i} className="flex gap-5 group animate-in slide-in-from-right-4 duration-500" style={{ animationDelay: `${i * 100}ms` }}>
-              <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=user${i}`} className="w-12 h-12 rounded-[20px] border-2 border-white/10 flex-shrink-0 bg-[#18181b] shadow-xl group-hover:scale-110 transition-transform" />
+          {comments.map(comment => (
+            <div key={comment.id} className="flex gap-5 group animate-in slide-in-from-right-4 duration-500">
+              <img src={comment.user?.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${comment.user?.username}`} className="w-12 h-12 rounded-[20px] border-2 border-white/10 flex-shrink-0 bg-[#18181b] shadow-xl group-hover:scale-110 transition-transform" />
               <div className="space-y-2 min-w-0">
                 <div className="flex items-center gap-3">
-                  <span className="text-sm font-black text-white/90">Curator_{i}</span>
-                  <span className="text-[10px] font-bold text-white/20 uppercase">2m ago</span>
+                   <span className="text-sm font-black text-white/90">{comment.user?.username}</span>
+                   <span className="text-[10px] font-bold text-white/20 uppercase">{new Date(comment.createdAt).toLocaleTimeString()}</span>
                 </div>
                 <p className="text-sm text-white/50 leading-relaxed font-medium">
-                  Love the minimalist aesthetic on slide {currentPage}. {i % 2 === 0 ? "Can we see the code block for that animation?" : "The typography here is spot on!"}
+                  {comment.content}
                 </p>
                 <div className="flex items-center gap-4 pt-1">
                    <button className="text-[10px] font-black text-white/20 uppercase hover:text-white transition-colors">Reply</button>
@@ -153,7 +189,7 @@ const PresentationPage: React.FC = () => {
                   <button className="text-white/20 hover:text-white transition-all"><Smile className="w-5 h-5" /></button>
                </div>
                <button 
-                 onClick={() => setCommentText("")}
+                 onClick={handlePostComment}
                  className="bg-white text-black text-[10px] font-black uppercase tracking-widest px-8 py-3 rounded-2xl hover:bg-white/90 transition-all flex items-center gap-3 shadow-xl active:scale-95 disabled:opacity-50"
                  disabled={!commentText.trim()}
                >

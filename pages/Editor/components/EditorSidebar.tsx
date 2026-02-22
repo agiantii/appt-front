@@ -90,14 +90,14 @@ const EditorSidebar: React.FC<EditorSidebarProps> = ({
                 {snippets.map(s => (
                   <button 
                     key={s.id}
-                    onClick={() => onInsertSnippet(s.code)}
+                    onClick={() => onInsertSnippet(s.content)}
                     className="w-full bg-white/5 border border-white/5 hover:border-white/10 p-3 rounded-xl text-left group transition-all"
                   >
                     <div className="flex justify-between items-center mb-1.5">
                       <span className="text-xs font-bold text-white/80 group-hover:text-white">{s.name}</span>
                     </div>
                     <div className="bg-black/20 p-2 rounded-lg text-[8px] font-mono text-white/30 truncate group-hover:text-white/50">
-                      {s.code.slice(0, 80)}...
+                      {s.content.slice(0, 80)}...
                     </div>
                   </button>
                 ))}

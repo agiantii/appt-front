@@ -1,35 +1,70 @@
 
 export interface User {
-  id: string;
-  name: string;
-  avatar: string;
+  id: number;
+  username: string;
   email: string;
+  avatarUrl: string | null;
+  state: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Slide {
   id: number;
   title: string;
   content: string;
-  slide_space_id: number;
-  parent_id: number | null;
-  is_public: boolean;
-  allow_comment: boolean;
-  created_at: string;
-  updated_at: string;
+  slideSpaceId: number;
+  parentId: number | null;
+  isPublic: boolean;
+  allowComment: boolean;
+  createdAt: string;
+  updatedAt: string;
+  isBuild?: boolean;
 }
 
 export interface SlideSpace {
   id: number;
   name: string;
-  description: string;
-  url: string;
-  owner_id: string;
+  ownerId: number;
+  isPublic: boolean;
+  createdAt: string;
+  updatedAt?: string;
 }
 
 export interface Snippet {
-  id: string;
+  id: number;
   name: string;
-  code: string;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Comment {
+  id: number;
+  slideId: number;
+  userId: number;
+  username: string;
+  avatarUrl: string | null;
+  content: string;
+  replyId: number | null;
+  createdAt: string;
+  user?: {
+    username: string;
+    avatar: string | null;
+  };
+}
+
+export interface ApiResponse<T> {
+  statusCode: number;
+  message: string;
+  data: T;
+}
+
+export interface PaginatedResponse<T> {
+  items: T[];
+  total: number;
+  page: number;
+  pageSize: number;
 }
 
 export interface FileTreeNode extends Slide {

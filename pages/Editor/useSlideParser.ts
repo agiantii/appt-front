@@ -2,8 +2,9 @@
 import { useMemo } from 'react';
 import { SlidePageInfo } from '../../types';
 
-export const useSlideParser = (content: string): SlidePageInfo[] => {
+export const useSlideParser = (content: string | null | undefined): SlidePageInfo[] => {
   return useMemo((): SlidePageInfo[] => {
+    if (!content) return [{ index: 1, title: "Untitled", preview: "...", lineStart: 1 }];
     const lines = content.split('\n');
     const blocks: { lines: string[], startLine: number, isSeparator: boolean }[] = [];
     

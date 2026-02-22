@@ -27,8 +27,7 @@ const App: React.FC = () => {
     }
   }, [navigate, location.pathname]);
 
-  const handleLogin = () => {
-    localStorage.setItem('token', 'mock-jwt-token');
+  const handleLogin = (token: string) => {
     setIsAuthenticated(true);
     setShowAuthModal(false);
     navigate('/dashboard/start');

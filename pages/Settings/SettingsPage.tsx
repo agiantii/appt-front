@@ -2,8 +2,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
 import { User as UserIcon, Code, Bell, Shield, ArrowLeft, Plus, Trash2, Save } from 'lucide-react';
-import { mockUser, mockSnippets } from '../../data/mock';
-import { Snippet } from '../../types';
+import { userApi } from '../../api/user';
+import { snippetApi } from '../../api/snippet';
+import { User, Snippet } from '../../types';
 
 // CodeMirror for snippet editing
 import { EditorView, lineNumbers, highlightActiveLine, keymap } from '@codemirror/view';
@@ -35,7 +36,7 @@ const SnippetEditor: React.FC<{ snippet: Snippet; onSave: (code: string) => void
     ];
 
     const state = EditorState.create({
-      doc: snippet.code,
+      doc: snippet.content,
       extensions
     });
 
@@ -63,15 +64,18 @@ const SnippetEditor: React.FC<{ snippet: Snippet; onSave: (code: string) => void
 
 const SettingsPage: React.FC = () => {
   const location = useLocation();
-  const [snippets, setSnippets] = useState<Snippet[]>(() => {
-    const saved = localStorage.getItem('user-snippets');
-    return saved ? JSON.parse(saved) : mockSnippets;
-  });
-  const [activeSnippetId, setActiveSnippetId] = useState<string | null>(null);
+  const [snippets, setSnippets] = useState<Snippet[]>([]);
+  const [activeSnippetId, setActiveSnippetId] = useState<number | null>(null);
+  const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
-    localStorage.setItem('user-snippets', JSON.stringify(snippets));
-  }, [snippets]);
+    userApi.getCurrentUser().then(res => {
+      if (res.statusCode === 0) setUser(res.data);
+    });
+    snippetApi.findAll().then(res => {
+      if (res.statusCode === 0) setSnippets(res.data);
+    });
+  }, []);
 
   const activeSnippet = snippets.find(s => s.id === activeSnippetId);
 
@@ -82,19 +86,31 @@ const SettingsPage: React.FC = () => {
     { label: 'Security', path: 'security', icon: Shield },
   ];
 
-  const handleAddSnippet = () => {
-    const newSnippet: Snippet = {
-      id: Date.now().toString(),
-      name: 'New Snippet',
-      code: '# New Snippet\nContent here...',
-    };
-    setSnippets([newSnippet, ...snippets]);
-    setActiveSnippetId(newSnippet.id);
+  const handleAddSnippet = async () => {
+    try {
+      const res = await snippetApi.create({
+        name: 'New Snippet',
+        content: '# New Snippet\nContent here...',
+      });
+      if (res.statusCode === 0) {
+        setSnippets([res.data, ...snippets]);
+        setActiveSnippetId(res.data.id);
+      }
+    } catch (err) {
+      console.error(err);
+    }
   };
 
-  const handleDeleteSnippet = (id: string) => {
-    setSnippets(snippets.filter(s => s.id !== id));
-    if (activeSnippetId === id) setActiveSnippetId(null);
+  const handleDeleteSnippet = async (id: number) => {
+    try {
+      const res = await snippetApi.remove(id);
+      if (res.statusCode === 0) {
+        setSnippets(snippets.filter(s => s.id !== id));
+        if (activeSnippetId === id) setActiveSnippetId(null);
+      }
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   return (
@@ -132,13 +148,15 @@ const SettingsPage: React.FC = () => {
                 <h1 className="text-3xl font-bold tracking-tight mb-2">Profile Info</h1>
                 <p className="text-white/40">Manage your account details and public appearance.</p>
               </div>
-              <div className="flex items-center gap-6 p-6 bg-white/5 border border-white/10 rounded-3xl">
-                 <img src={mockUser.avatar} className="w-24 h-24 rounded-2xl object-cover" />
-                 <div>
-                    <h3 className="text-xl font-bold">{mockUser.name}</h3>
-                    <p className="text-white/40 text-sm">{mockUser.email}</p>
-                 </div>
-              </div>
+              {user && (
+                <div className="flex items-center gap-6 p-6 bg-white/5 border border-white/10 rounded-3xl">
+                   <img src={user.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.username}`} className="w-24 h-24 rounded-2xl object-cover" />
+                   <div>
+                      <h3 className="text-xl font-bold">{user.username}</h3>
+                      <p className="text-white/40 text-sm">{user.email}</p>
+                   </div>
+                </div>
+              )}
             </div>
           } />
           <Route path="snippets" element={
@@ -182,7 +200,17 @@ const SettingsPage: React.FC = () => {
                         <label className="text-[10px] font-black text-white/30 uppercase tracking-widest">Snippet Name</label>
                         <input 
                           value={activeSnippet.name}
-                          onChange={(e) => setSnippets(snippets.map(s => s.id === activeSnippet.id ? { ...s, name: e.target.value } : s))}
+                          onChange={async (e) => {
+                            const newName = e.target.value;
+                            try {
+                              const res = await snippetApi.update(activeSnippet.id, { name: newName });
+                              if (res.statusCode === 0) {
+                                setSnippets(snippets.map(s => s.id === activeSnippet.id ? res.data : s));
+                              }
+                            } catch (err) {
+                              console.error(err);
+                            }
+                          }}
                           className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-white/10"
                         />
                       </div>
@@ -190,7 +218,16 @@ const SettingsPage: React.FC = () => {
                         <label className="text-[10px] font-black text-white/30 uppercase tracking-widest">Code Content</label>
                         <SnippetEditor 
                           snippet={activeSnippet} 
-                          onSave={(code) => setSnippets(snippets.map(s => s.id === activeSnippet.id ? { ...s, code } : s))} 
+                          onSave={async (content) => {
+                            try {
+                              const res = await snippetApi.update(activeSnippet.id, { content });
+                              if (res.statusCode === 0) {
+                                setSnippets(snippets.map(s => s.id === activeSnippet.id ? res.data : s));
+                              }
+                            } catch (err) {
+                              console.error(err);
+                            }
+                          }} 
                         />
                       </div>
                     </div>

@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
+import { slideApi } from '../../api/slide';
 import { 
   ChevronRight, 
   ChevronDown, 
@@ -51,7 +52,7 @@ const FileTree: React.FC<FileTreeProps> = ({ data, onSelect, onUpdate, onAddChil
 
   const buildTree = (nodes: Slide[], parentId: number | null = null): FileTreeNode[] => {
     return nodes
-      .filter(node => node.parent_id === parentId)
+      .filter(node => node.parentId === parentId)
       .sort((a, b) => a.title.localeCompare(b.title, undefined, { numeric: true, sensitivity: 'base' }))
       .map(node => ({
         ...node,
@@ -68,31 +69,45 @@ const FileTree: React.FC<FileTreeProps> = ({ data, onSelect, onUpdate, onAddChil
 
   // --- ACTIONS ---
 
-  const handleRename = (id: number, newTitle: string) => {
+  const handleRename = async (id: number, newTitle: string) => {
     if (!newTitle.trim()) {
       setEditingId(null);
       return;
     }
-    const updated = localSlides.map(s => s.id === id ? { ...s, title: newTitle } : s);
-    setLocalSlides(updated);
-    if (onUpdate) onUpdate(updated);
+    try {
+      const res = await slideApi.update(id, { title: newTitle });
+      if (res.statusCode === 0) {
+        const updated = localSlides.map(s => s.id === id ? res.data : s);
+        setLocalSlides(updated);
+        if (onUpdate) onUpdate(updated);
+      }
+    } catch (err) {
+      console.error(err);
+    }
     setEditingId(null);
     setActiveMenuId(null);
   };
 
-  const handleDelete = (id: number) => {
+  const handleDelete = async (id: number) => {
     if (!window.confirm("Confirm deletion of this document and all its children? This action cannot be undone.")) return;
 
-    const idsToDelete = new Set<number>();
-    const findChildrenRecursive = (parentId: number) => {
-      idsToDelete.add(parentId);
-      localSlides.filter(s => s.parent_id === parentId).forEach(child => findChildrenRecursive(child.id));
-    };
-    findChildrenRecursive(id);
+    try {
+      const res = await slideApi.remove(id);
+      if (res.statusCode === 0) {
+        const idsToDelete = new Set<number>();
+        const findChildrenRecursive = (parentId: number) => {
+          idsToDelete.add(parentId);
+          localSlides.filter(s => s.parentId === parentId).forEach(child => findChildrenRecursive(child.id));
+        };
+        findChildrenRecursive(id);
 
-    const updated = localSlides.filter(s => !idsToDelete.has(s.id));
-    setLocalSlides(updated);
-    if (onUpdate) onUpdate(updated);
+        const updated = localSlides.filter(s => !idsToDelete.has(s.id));
+        setLocalSlides(updated);
+        if (onUpdate) onUpdate(updated);
+      }
+    } catch (err) {
+      console.error(err);
+    }
     setActiveMenuId(null);
   };
 
@@ -100,9 +115,9 @@ const FileTree: React.FC<FileTreeProps> = ({ data, onSelect, onUpdate, onAddChil
 
   const isDescendant = (potentialChildId: number, potentialParentId: number): boolean => {
     const node = localSlides.find(s => s.id === potentialChildId);
-    if (!node || node.parent_id === null) return false;
-    if (node.parent_id === potentialParentId) return true;
-    return isDescendant(node.parent_id, potentialParentId);
+    if (!node || node.parentId === null) return false;
+    if (node.parentId === potentialParentId) return true;
+    return isDescendant(node.parentId, potentialParentId);
   };
 
   const onDragStart = (e: React.DragEvent, id: number) => {
@@ -129,7 +144,7 @@ const FileTree: React.FC<FileTreeProps> = ({ data, onSelect, onUpdate, onAddChil
     setDropTargetId(targetId);
   };
 
-  const onDrop = (e: React.DragEvent, targetId: number | null) => {
+  const onDrop = async (e: React.DragEvent, targetId: number | null) => {
     e.preventDefault();
     e.stopPropagation();
     
@@ -139,9 +154,16 @@ const FileTree: React.FC<FileTreeProps> = ({ data, onSelect, onUpdate, onAddChil
     
     if (id === targetId || (targetId !== null && isDescendant(targetId, id))) return;
 
-    const updated = localSlides.map(s => s.id === id ? { ...s, parent_id: targetId } : s);
-    setLocalSlides(updated);
-    if (onUpdate) onUpdate(updated);
+    try {
+      const res = await slideApi.move(id, targetId);
+      if (res.statusCode === 0) {
+        const updated = localSlides.map(s => s.id === id ? res.data : s);
+        setLocalSlides(updated);
+        if (onUpdate) onUpdate(updated);
+      }
+    } catch (err) {
+      console.error(err);
+    }
     setDraggedId(null);
     
     if (targetId !== null) {
