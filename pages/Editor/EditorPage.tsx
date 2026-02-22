@@ -16,6 +16,7 @@ import {
 import { slideApi } from '../../api/slide';
 import { snippetApi } from '../../api/snippet';
 import { userApi } from '../../api/user';
+import { versionApi } from '../../api/version';
 import { SidebarTab, Slide, Snippet, User, ConnectionInfo } from '../../types';
 import ResizableLayout from '../../components/Editor/ResizablePanels';
 import { GoogleGenAI } from '@google/genai';
@@ -82,7 +83,7 @@ const slidevDarkTheme = EditorView.theme({
     minHeight: "100%"
   },
   "&.cm-focused .cm-cursor": { borderLeftColor: "#ffffff" },
-  "&.cm-focused .cm-selectionBackground, .cm-selectionBackground, ::selection": { backgroundColor: "rgba(255, 255, 255, 0.1) !important" },
+  "&.cm-focused .cm-selectionBackground, .cm-selectionBackground, ::selection": { backgroundColor: "rgba(99, 102, 241, 0.35) !important" },
   ".cm-gutters": { 
     backgroundColor: "#09090b", 
     color: "#3f3f46", 
@@ -160,17 +161,32 @@ const EditorPage: React.FC = () => {
 
   const slidePages = useSlideParser(content);
 
-  // Keyboard shortcut for sidebar toggle: Ctrl+B
+  // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Ctrl+B: toggle sidebar
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
         e.preventDefault();
         setSidebarOpen(prev => !prev);
+      }
+      // Ctrl+S: save
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        handleSaveRef.current?.();
+      }
+      // Ctrl+Shift+S: save and create version
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        handleSaveAndVersionRef.current?.();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
+
+  // Refs for keyboard shortcuts
+  const handleSaveRef = useRef<() => void>();
+  const handleSaveAndVersionRef = useRef<() => void>();
 
   const ydocRef = useRef<Y.Doc | null>(null);
   const providerRef = useRef<HocuspocusProvider | null>(null);
@@ -362,6 +378,26 @@ const EditorPage: React.FC = () => {
       setIsSaving(false);
     }
   }, [slideId, content]);
+
+  // Ctrl+Shift+S: save and create version
+  const handleSaveAndCreateVersion = useCallback(async () => {
+    if (!slideId) return;
+    setIsSaving(true);
+    try {
+      await slideApi.saveContent(Number(slideId), content);
+      await versionApi.create(Number(slideId), { commitMsg: `保存于 ${new Date().toLocaleString()}` });
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsSaving(false);
+    }
+  }, [slideId, content]);
+
+  // Update refs for keyboard shortcuts
+  useEffect(() => {
+    handleSaveRef.current = handleSave;
+    handleSaveAndVersionRef.current = handleSaveAndCreateVersion;
+  }, [handleSave, handleSaveAndCreateVersion]);
 
   const handleAiChat = async () => {
     if (!chatInput.trim()) return;
