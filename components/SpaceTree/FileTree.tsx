@@ -31,7 +31,9 @@ const FileTree: React.FC<FileTreeProps> = ({ data, onSelect, onUpdate, onAddChil
   const [editValue, setEditValue] = useState("");
   const [draggedId, setDraggedId] = useState<number | null>(null);
   const [dropTargetId, setDropTargetId] = useState<number | null>(null);
+  const [dropPosition, setDropPosition] = useState<'before' | 'inside' | 'after' | null>(null);
   const [activeMenuId, setActiveMenuId] = useState<number | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
   
   // Modal states
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -77,13 +79,19 @@ const FileTree: React.FC<FileTreeProps> = ({ data, onSelect, onUpdate, onAddChil
   // --- ACTIONS ---
 
   const handleRename = async (newTitle: string) => {
-    if (!slideToRename || !newTitle.trim()) {
+    if (!slideToRename) {
+      setShowRenameModal(false);
+      setSlideToRename(null);
+      return;
+    }
+    const titleToUse = newTitle.trim() || slideToRename.currentTitle;
+    if (!titleToUse) {
       setShowRenameModal(false);
       setSlideToRename(null);
       return;
     }
     try {
-      const res = await slideApi.update(slideToRename.id, { title: newTitle });
+      const res = await slideApi.update(slideToRename.id, { title: titleToUse });
       if (res.statusCode === 0) {
         const updated = localSlides.map(s => s.id === slideToRename.id ? res.data : s);
         setLocalSlides(updated);
@@ -145,11 +153,24 @@ const FileTree: React.FC<FileTreeProps> = ({ data, onSelect, onUpdate, onAddChil
 
   const onDragStart = (e: React.DragEvent, id: number) => {
     setDraggedId(id);
+    setIsDragging(true);
     e.dataTransfer.setData("nodeId", id.toString());
     e.dataTransfer.effectAllowed = "move";
+    // 设置拖拽图像
+    const dragEl = e.currentTarget as HTMLElement;
+    if (dragEl) {
+      e.dataTransfer.setDragImage(dragEl, 20, 12);
+    }
   };
 
-  const onDragOver = (e: React.DragEvent, targetId: number | null) => {
+  const onDragEnd = () => {
+    setDraggedId(null);
+    setDropTargetId(null);
+    setDropPosition(null);
+    setIsDragging(false);
+  };
+
+  const onDragOver = (e: React.DragEvent, targetId: number | null, element?: HTMLElement) => {
     e.preventDefault();
     e.stopPropagation();
 
@@ -159,26 +180,54 @@ const FileTree: React.FC<FileTreeProps> = ({ data, onSelect, onUpdate, onAddChil
       if (draggedId === targetId || isDescendant(targetId, draggedId)) {
         e.dataTransfer.dropEffect = "none";
         setDropTargetId(null);
+        setDropPosition(null);
         return;
       }
     }
 
     e.dataTransfer.dropEffect = "move";
     setDropTargetId(targetId);
+    
+    // 计算放置位置
+    if (element && targetId !== null) {
+      const rect = element.getBoundingClientRect();
+      const y = e.clientY - rect.top;
+      const height = rect.height;
+      if (y < height * 0.25) {
+        setDropPosition('before');
+      } else if (y > height * 0.75) {
+        setDropPosition('after');
+      } else {
+        setDropPosition('inside');
+      }
+    } else {
+      setDropPosition('inside');
+    }
   };
 
   const onDrop = async (e: React.DragEvent, targetId: number | null) => {
     e.preventDefault();
     e.stopPropagation();
     
-    setDropTargetId(null);
     const id = parseInt(e.dataTransfer.getData("nodeId"));
-    if (isNaN(id)) return;
+    const currentPosition = dropPosition;
     
+    setDropTargetId(null);
+    setDropPosition(null);
+    setIsDragging(false);
+    
+    if (isNaN(id)) return;
     if (id === targetId || (targetId !== null && isDescendant(targetId, id))) return;
 
+    // 根据放置位置确定 parentId
+    let finalParentId = targetId;
+    if (targetId !== null && currentPosition !== 'inside') {
+      const targetNode = localSlides.find(s => s.id === targetId);
+      finalParentId = targetNode?.parentId ?? null;
+    }
+
     try {
-      const res = await slideApi.move(id, targetId);
+      const res = await slideApi.move(id, finalParentId);
       if (res.statusCode === 0) {
         const updated = localSlides.map(s => s.id === id ? res.data : s);
         setLocalSlides(updated);
@@ -189,8 +238,8 @@ const FileTree: React.FC<FileTreeProps> = ({ data, onSelect, onUpdate, onAddChil
     }
     setDraggedId(null);
     
-    if (targetId !== null) {
-      setExpanded(prev => ({ ...prev, [targetId]: true }));
+    if (finalParentId !== null) {
+      setExpanded(prev => ({ ...prev, [finalParentId!]: true }));
     }
   };
 
@@ -200,14 +249,27 @@ const FileTree: React.FC<FileTreeProps> = ({ data, onSelect, onUpdate, onAddChil
     const isEditing = editingId === node.id;
     const isTarget = dropTargetId === node.id;
     const isMenuActive = activeMenuId === node.id;
+    const isBeingDragged = draggedId === node.id;
+    const itemRef = useRef<HTMLDivElement>(null);
+
+    const getDropIndicatorClass = () => {
+      if (!isTarget || !dropPosition) return '';
+      if (dropPosition === 'before') return 'before:absolute before:left-4 before:right-2 before:-top-0.5 before:h-0.5 before:bg-blue-500 before:rounded-full';
+      if (dropPosition === 'after') return 'after:absolute after:left-4 after:right-2 after:-bottom-0.5 after:h-0.5 after:bg-blue-500 after:rounded-full';
+      return '';
+    };
 
     return (
       <div 
-        className={`group/item select-none transition-all ${isTarget ? 'bg-white/10 ring-1 ring-white/20 rounded-md' : ''}`}
-        onDragOver={(e) => onDragOver(e, node.id)}
+        className={`group/item select-none transition-all relative ${getDropIndicatorClass()} ${
+          isTarget && dropPosition === 'inside' ? 'bg-blue-500/20 ring-1 ring-blue-500/40 rounded-md' : ''
+        } ${isBeingDragged ? 'opacity-40' : ''}`}
+        onDragOver={(e) => onDragOver(e, node.id, itemRef.current || undefined)}
         onDrop={(e) => onDrop(e, node.id)}
+        onDragEnd={onDragEnd}
       >
         <div 
+          ref={itemRef}
           draggable={!isEditing}
           onDragStart={(e) => onDragStart(e, node.id)}
           className={`flex items-center gap-1.5 px-2 py-1.5 hover:bg-white/5 rounded-md cursor-pointer relative transition-all ${isEditing ? 'bg-white/10' : ''}`}
@@ -219,7 +281,7 @@ const FileTree: React.FC<FileTreeProps> = ({ data, onSelect, onUpdate, onAddChil
             setEditValue(node.title);
           }}
         >
-          <div className="opacity-0 group-hover/item:opacity-20 cursor-grab active:cursor-grabbing">
+          <div className={`cursor-grab active:cursor-grabbing transition-opacity ${isDragging ? 'opacity-30' : 'opacity-0 group-hover/item:opacity-20'}`}>
             <GripVertical className="w-3.5 h-3.5" />
           </div>
 
@@ -239,13 +301,22 @@ const FileTree: React.FC<FileTreeProps> = ({ data, onSelect, onUpdate, onAddChil
               value={editValue}
               onChange={(e) => setEditValue(e.target.value)}
               onBlur={() => {
-                setSlideToRename({ id: node.id, currentTitle: node.title });
-                setShowRenameModal(true);
+                if (editValue.trim() && editValue !== node.title) {
+                  setSlideToRename({ id: node.id, currentTitle: editValue });
+                  setShowRenameModal(true);
+                }
+                setEditingId(null);
               }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
-                  setSlideToRename({ id: node.id, currentTitle: node.title });
-                  setShowRenameModal(true);
+                  e.preventDefault();
+                  if (editValue.trim() && editValue !== node.title) {
+                    setSlideToRename({ id: node.id, currentTitle: editValue });
+                    setShowRenameModal(true);
+                  }
+                  setEditingId(null);
+                } else if (e.key === 'Escape') {
+                  setEditingId(null);
                 }
               }}
               onClick={(e) => e.stopPropagation()}
@@ -256,16 +327,29 @@ const FileTree: React.FC<FileTreeProps> = ({ data, onSelect, onUpdate, onAddChil
             </span>
           )}
 
-          <div className="relative">
-            <button 
+          <div className="flex items-center gap-0.5">
+            {/* 快捷新建按钮 */}
+            <button
               onClick={(e) => {
                 e.stopPropagation();
-                setActiveMenuId(isMenuActive ? null : node.id);
+                if (onAddChild) onAddChild(node.id);
+                setExpanded(prev => ({ ...prev, [node.id]: true }));
               }}
-              className={`p-1 hover:bg-white/10 text-white/30 hover:text-white rounded transition-opacity ${isMenuActive ? 'opacity-100 bg-white/10' : 'opacity-0 group-hover/item:opacity-100'}`}
+              className="p-1 hover:bg-white/10 text-white/30 hover:text-white rounded transition-opacity opacity-0 group-hover/item:opacity-100"
+              title="新建子页面"
             >
-              <MoreVertical className="w-3.5 h-3.5" />
+              <Plus className="w-3 h-3" />
             </button>
+            <div className="relative">
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setActiveMenuId(isMenuActive ? null : node.id);
+                }}
+                className={`p-1 hover:bg-white/10 text-white/30 hover:text-white rounded transition-opacity ${isMenuActive ? 'opacity-100 bg-white/10' : 'opacity-0 group-hover/item:opacity-100'}`}
+              >
+                <MoreVertical className="w-3.5 h-3.5" />
+              </button>
 
             {isMenuActive && (
               <div 
@@ -305,6 +389,7 @@ const FileTree: React.FC<FileTreeProps> = ({ data, onSelect, onUpdate, onAddChil
                 </button>
               </div>
             )}
+            </div>
           </div>
         </div>
 

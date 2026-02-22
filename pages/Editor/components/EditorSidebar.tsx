@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Zap, Sidebar as SidebarIcon, Files, GitBranch, MessageSquare, Sparkles, Code, Home, History, ArrowRight, RotateCcw, GitCommit, Send, Trash2, X } from 'lucide-react';
+import { Zap, Sidebar as SidebarIcon, Files, GitBranch, MessageSquare, Sparkles, Code, Home, History, ArrowRight, RotateCcw, GitCommit, Send, Trash2, X, ChevronDown, ChevronRight } from 'lucide-react';
 import { SidebarTab, Slide, Snippet, Version, Comment } from '../../../types';
 import FileTree from '../../../components/SpaceTree/FileTree';
 import { versionApi } from '../../../api/version';
@@ -49,6 +49,7 @@ const EditorSidebar: React.FC<EditorSidebarProps> = ({
   const [commentInput, setCommentInput] = useState('');
   const [replyTo, setReplyTo] = useState<Comment | null>(null);
   const [commentToDelete, setCommentToDelete] = useState<Comment | null>(null);
+  const [collapsedComments, setCollapsedComments] = useState<Set<number>>(new Set());
 
   // Load versions when git tab is active
   useEffect(() => {
@@ -138,8 +139,17 @@ const EditorSidebar: React.FC<EditorSidebarProps> = ({
         replyId: replyTo?.id
       });
       if (res.statusCode === 0) {
-        setComments([res.data, ...comments]);
+        // 重新加载评论列表以确保嵌套正确
+        await loadComments();
         setCommentInput('');
+        // 如果是回复，展开父评论
+        if (replyTo) {
+          setCollapsedComments(prev => {
+            const next = new Set(prev);
+            next.delete(replyTo.id);
+            return next;
+          });
+        }
         setReplyTo(null);
       }
     } catch (err) {
@@ -152,7 +162,8 @@ const EditorSidebar: React.FC<EditorSidebarProps> = ({
     try {
       const res = await commentApi.remove(commentToDelete.id);
       if (res.statusCode === 0) {
-        setComments(comments.filter(c => c.id !== commentToDelete.id));
+        // 重新加载以确保嵌套结构正确
+        await loadComments();
       }
     } catch (err) {
       console.error('Failed to delete comment:', err);
@@ -161,9 +172,119 @@ const EditorSidebar: React.FC<EditorSidebarProps> = ({
     }
   };
 
+  const toggleCommentCollapse = (commentId: number) => {
+    setCollapsedComments(prev => {
+      const next = new Set(prev);
+      if (next.has(commentId)) {
+        next.delete(commentId);
+      } else {
+        next.add(commentId);
+      }
+      return next;
+    });
+  };
+
   const handleTabClick = (tab: SidebarTab) => {
     setActiveTab(tab);
     setSidebarOpen(true);
+  };
+
+  // 无限嵌套评论组件
+  const CommentTree: React.FC<{
+    comments: Comment[];
+    parentId: number | null;
+    level: number;
+    currentUser?: { id: number; username: string; avatarUrl: string | null } | null;
+    onReply: (comment: Comment) => void;
+    onDelete: (comment: Comment) => void;
+    parentUsername?: string;
+  }> = ({ comments, parentId, level, currentUser, onReply, onDelete, parentUsername }) => {
+    const children = comments.filter(c => c.replyId === parentId);
+    if (children.length === 0) return null;
+    
+    const maxIndent = 4;
+    const indent = Math.min(level, maxIndent);
+    const isNested = level > 0;
+    
+    return (
+      <div className={`space-y-2 ${isNested ? `ml-${indent * 3} border-l-2 border-white/5 pl-3` : ''}`}>
+        {children.map((comment) => {
+          const replies = comments.filter(c => c.replyId === comment.id);
+          const hasReplies = replies.length > 0;
+          const isCollapsed = !collapsedComments.has(comment.id);
+          
+          return (
+            <div key={comment.id} className="space-y-2">
+              <div className={`${isNested ? 'p-2.5 bg-white/[0.03] rounded-lg' : 'p-3 bg-white/5 rounded-xl'} border border-white/5`}>
+                <div className="flex items-center justify-between mb-1.5">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {comment.avatarUrl ? (
+                      <img src={comment.avatarUrl} alt="" className={isNested ? 'w-4 h-4 rounded-full' : 'w-5 h-5 rounded-full'} />
+                    ) : (
+                      <div className={`${isNested ? 'w-4 h-4 text-[7px]' : 'w-5 h-5 text-[8px]'} rounded-full bg-white/10 flex items-center justify-center text-white/50`}>
+                        {comment.username.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                    <span className={`${isNested ? 'text-[11px]' : 'text-xs'} font-medium text-white/70`}>{comment.username}</span>
+                    {parentUsername && (
+                      <>
+                        <span className="text-[10px] text-white/20">回复</span>
+                        <span className="text-[11px] text-white/40">@{parentUsername}</span>
+                      </>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className={`${isNested ? 'text-[9px]' : 'text-[10px]'} text-white/30`}>
+                      {new Date(comment.createdAt).toLocaleDateString()}
+                    </span>
+                    {currentUser?.id === comment.userId && (
+                      <button
+                        onClick={() => onDelete(comment)}
+                        className={`${isNested ? 'p-0.5' : 'p-1'} hover:bg-red-500/10 rounded text-white/20 hover:text-red-400 transition-colors`}
+                      >
+                        <Trash2 className={isNested ? 'w-2.5 h-2.5' : 'w-3 h-3'} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <p className={`${isNested ? 'text-[11px]' : 'text-xs'} text-white/60 leading-relaxed`}>{comment.content}</p>
+                <div className="flex items-center gap-3 mt-2">
+                  <button
+                    onClick={() => onReply(comment)}
+                    className="text-[10px] text-white/30 hover:text-white/60 transition-colors"
+                  >
+                    回复
+                  </button>
+                  {hasReplies && (
+                    <button
+                      onClick={() => toggleCommentCollapse(comment.id)}
+                      className="flex items-center gap-1 text-[10px] text-white/30 hover:text-white/60 transition-colors"
+                    >
+                      {isCollapsed ? (
+                        <><ChevronRight className="w-3 h-3" />{replies.length} 条回复</>
+                      ) : (
+                        <><ChevronDown className="w-3 h-3" />收起</>          
+                      )}
+                    </button>
+                  )}
+                </div>
+              </div>
+              {!isCollapsed && (
+                <CommentTree
+                  comments={comments}
+                  parentId={comment.id}
+                  level={level + 1}
+                  currentUser={currentUser}
+                  onReply={onReply}
+                  onDelete={onDelete}
+                  parentUsername={comment.username}
+                />
+              )}
+            </div>
+          );
+        })}
+      </div>
+    );
   };
 
   const navButtons = [
@@ -293,42 +414,14 @@ const EditorSidebar: React.FC<EditorSidebarProps> = ({
                       <p className="text-[10px] mt-2 opacity-20">协作者可以在这里发表评论</p>
                     </div>
                   ) : (
-                    comments.map((comment) => (
-                      <div key={comment.id} className="p-3 bg-white/5 rounded-xl border border-white/5">
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center gap-2">
-                            {comment.avatarUrl ? (
-                              <img src={comment.avatarUrl} alt="" className="w-5 h-5 rounded-full" />
-                            ) : (
-                              <div className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center text-[8px] text-white/50">
-                                {comment.username.charAt(0).toUpperCase()}
-                              </div>
-                            )}
-                            <span className="text-xs font-medium text-white/70">{comment.username}</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-[10px] text-white/30">
-                              {new Date(comment.createdAt).toLocaleDateString()}
-                            </span>
-                            {currentUser?.id === comment.userId && (
-                              <button
-                                onClick={() => setCommentToDelete(comment)}
-                                className="p-1 hover:bg-red-500/10 rounded text-white/20 hover:text-red-400 transition-colors"
-                              >
-                                <Trash2 className="w-3 h-3" />
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                        <p className="text-xs text-white/60 leading-relaxed">{comment.content}</p>
-                        <button
-                          onClick={() => setReplyTo(comment)}
-                          className="mt-2 text-[10px] text-white/30 hover:text-white/60 transition-colors"
-                        >
-                          回复
-                        </button>
-                      </div>
-                    ))
+                    <CommentTree 
+                      comments={comments} 
+                      parentId={null} 
+                      level={0}
+                      currentUser={currentUser}
+                      onReply={setReplyTo}
+                      onDelete={setCommentToDelete}
+                    />
                   )}
                 </div>
                 <div className="p-3 border-t border-white/5">
