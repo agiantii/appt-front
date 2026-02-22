@@ -540,6 +540,7 @@ const EditorPage: React.FC = () => {
               onJumpToSlide={jumpToSlide}
               onScrollOutline={dir => outlineScrollRef.current?.scrollBy({ top: dir === 'top' ? -100 : 100, behavior: 'smooth' })}
               outlineScrollRef={outlineScrollRef}
+              slideId={slideId}
             />
           }
         />

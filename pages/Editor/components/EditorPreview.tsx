@@ -1,7 +1,8 @@
 
-import React from 'react';
-import { Maximize, Zap, ArrowUp, ArrowDown } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Maximize, RefreshCw, ArrowUp, ArrowDown, Loader2 } from 'lucide-react';
 import { SlidePageInfo } from '../../../types';
+import { slideApi } from '../../../api/slide';
 
 interface EditorPreviewProps {
   previewMode: 'dev' | 'build';
@@ -13,13 +14,50 @@ interface EditorPreviewProps {
   onJumpToSlide: (line: number) => void;
   onScrollOutline: (dir: 'top' | 'bottom') => void;
   outlineScrollRef: React.RefObject<HTMLDivElement>;
+  slideId?: string;
 }
 
 const EditorPreview: React.FC<EditorPreviewProps> = ({
   previewMode, setPreviewMode, content, outlineHeight, onOutlineResize,
-  slidePages, onJumpToSlide, onScrollOutline, outlineScrollRef
+  slidePages, onJumpToSlide, onScrollOutline, outlineScrollRef, slideId
 }) => {
-  const currentTitle = content?.split('\n').find(l => l.startsWith('# '))?.replace('# ', '') || 'New Presentation';
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const getIframeSrc = () => {
+    if (!previewUrl) return '';
+    const baseUrl = previewUrl.split('#')[0];
+    return `${baseUrl}/${currentPage}`;
+  };
+
+  const handleOutlineClick = (page: { index: number; lineStart: number }) => {
+    onJumpToSlide(page.lineStart);
+    setCurrentPage(page.index);
+  };
+
+  const fetchPreview = async () => {
+    if (!slideId) return;
+    setIsLoading(true);
+    setError(null);
+    try {
+      const res = await slideApi.preview(Number(slideId), previewMode);
+      if (res.statusCode === 0 && res.data?.url) {
+        setPreviewUrl(res.data.url);
+      } else {
+        setError('Failed to load preview');
+      }
+    } catch (err) {
+      setError('Preview service unavailable');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchPreview();
+  }, [slideId, previewMode]);
 
   return (
     <div className="flex flex-col h-full min-w-0">
@@ -36,33 +74,39 @@ const EditorPreview: React.FC<EditorPreviewProps> = ({
           ))}
         </div>
         <div className="flex items-center gap-3">
-          <button className="p-1.5 hover:bg-white/5 rounded-lg text-white/40 hover:text-white transition-all">
+          <button onClick={fetchPreview} className="p-1.5 hover:bg-white/5 rounded-lg text-white/40 hover:text-white transition-all" title="Refresh">
+            <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
+          </button>
+          <button className="p-1.5 hover:bg-white/5 rounded-lg text-white/40 hover:text-white transition-all" title="Fullscreen">
             <Maximize className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
       
-      <div className="flex-1 p-10 bg-[#121214] overflow-hidden flex items-center justify-center relative">
-        <div className="aspect-[16/9] w-full bg-[#fafafa] text-black shadow-2xl rounded-xl flex flex-col p-14 transition-all hover:scale-[1.01] duration-700 relative group/preview">
-          <div className="absolute top-6 right-8 opacity-0 group-hover/preview:opacity-100 transition-opacity">
-            <span className="text-[10px] font-black tracking-widest text-black/20 uppercase">Slidev Core 0.51</span>
+      <div className="flex-1 bg-[#121214] overflow-hidden flex items-center justify-center relative">
+        {isLoading ? (
+          <div className="flex flex-col items-center gap-3 text-white/40">
+            <Loader2 className="w-8 h-8 animate-spin" />
+            <span className="text-xs">Loading preview...</span>
           </div>
-          <div className="text-5xl font-black tracking-tighter leading-[1.05] selection:bg-black selection:text-white">
-            {currentTitle}
+        ) : error ? (
+          <div className="flex flex-col items-center gap-3 text-white/40">
+            <span className="text-sm">{error}</span>
+            <button onClick={fetchPreview} className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-xs transition-colors">
+              Retry
+            </button>
           </div>
-          <div className="mt-8 text-xl text-black/40 font-medium max-w-xl">
-             Developing elegant presentations with real-time markdown and Slidev intelligence.
-          </div>
-          <div className="mt-auto pt-8 border-t border-black/5 flex items-center justify-between">
-             <div className="flex items-center gap-4">
-                <div className="w-8 h-8 rounded-full bg-black flex items-center justify-center text-white">
-                   <Zap className="w-4 h-4" />
-                </div>
-                <span className="text-xs font-black tracking-widest uppercase">Collaborative Platform</span>
-             </div>
-             <div className="text-[10px] font-bold text-black/20">© 2025 Slidev.ai</div>
-          </div>
-        </div>
+        ) : previewUrl ? (
+          <iframe
+            key={currentPage}
+            src={getIframeSrc()}
+            className="w-full h-full border-0"
+            title="Slide Preview"
+            sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+          />
+        ) : (
+          <div className="text-white/30 text-sm">No preview available</div>
+        )}
       </div>
 
       <div 
@@ -90,12 +134,12 @@ const EditorPreview: React.FC<EditorPreviewProps> = ({
           {slidePages.map(page => (
             <button 
               key={page.index}
-              onClick={() => onJumpToSlide(page.lineStart)}
-              className="w-full flex items-center gap-4 px-4 py-2.5 hover:bg-white/5 rounded-xl group transition-all text-left"
+              onClick={() => handleOutlineClick(page)}
+              className={`w-full flex items-center gap-4 px-4 py-2.5 rounded-xl group transition-all text-left ${currentPage === page.index ? 'bg-indigo-500/20 border border-indigo-500/30' : 'hover:bg-white/5 border border-transparent'}`}
             >
-              <span className="text-[10px] font-mono font-bold text-white/10 group-hover:text-white/40 w-4 text-center">{page.index}</span>
+              <span className={`text-[10px] font-mono font-bold w-5 h-5 flex items-center justify-center rounded ${currentPage === page.index ? 'bg-indigo-500 text-white' : 'text-white/20 group-hover:text-white/40'}`}>{page.index}</span>
               <div className="flex-1 min-w-0">
-                <span className="text-xs font-semibold text-white/50 group-hover:text-white/90 truncate block">{page.title}</span>
+                <span className={`text-xs font-semibold truncate block ${currentPage === page.index ? 'text-white' : 'text-white/50 group-hover:text-white/90'}`}>{page.title}</span>
                 <span className="text-[10px] text-white/20 group-hover:text-white/30 truncate block mt-0.5">{page.preview}...</span>
               </div>
             </button>
