@@ -195,6 +195,7 @@ const EditorPage: React.FC = () => {
   const yTextRef = useRef<Y.Text | null>(null);
   const initialContentRef = useRef<string>('');
   const [connectionInfo, setConnectionInfo] = useState<ConnectionInfo | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   
   useEffect(() => {
     initialContentRef.current = currentSlide?.content || '';
@@ -203,6 +204,9 @@ const EditorPage: React.FC = () => {
   // Fetch WebSocket connection info and initialize WebSocket
   useEffect(() => {
     if (!slideId) return;
+    
+    // Reset authentication state when slide changes
+    setIsAuthenticated(false);
 
     const initWebSocket = async () => {
       try {
@@ -232,6 +236,10 @@ const EditorPage: React.FC = () => {
           },
           onDisconnect: () => {
             console.log('[WebSocket] Disconnected from:', connInfo.docName);
+          },
+          onAuthenticated(data) {
+            console.log('[WebSocket] Authenticated:', data);
+            setIsAuthenticated(true);
           },
           onAuthenticationFailed: () => {
             alert('WebSocket 认证失败，请重新登录');
@@ -332,11 +340,13 @@ const EditorPage: React.FC = () => {
   useEffect(() => {
     if (!editorContainerRef.current) return;
     if (!yTextRef.current || !providerRef.current) return;
+    if (!isAuthenticated) return;
 
     const yText = yTextRef.current;
     const provider = providerRef.current;
 
-    let initialDoc = "";
+    // Get initial content from Yjs document or fallback to currentSlide content
+    let initialDoc = yText.toString() || initialContentRef.current || "";
 
     const view = new EditorView({
       state: EditorState.create({
@@ -375,7 +385,7 @@ const EditorPage: React.FC = () => {
     return () => {
       view.destroy();
     };
-  }, [slideId, manualBasicSetup, snippetCompletionSource]);
+  }, [slideId, manualBasicSetup, snippetCompletionSource, isAuthenticated]);
 
   const handleSave = useCallback(async () => {
     if (!slideId) return;
