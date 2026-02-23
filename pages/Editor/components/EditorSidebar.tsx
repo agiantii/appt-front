@@ -327,7 +327,8 @@ const EditorSidebar: React.FC<EditorSidebarProps> = ({
           <div className="flex-1 overflow-y-auto py-3 px-2 custom-scrollbar">
             {activeTab === 'explorer' && (
               <FileTree 
-                data={slides} 
+                data={slides}
+                slideSpaceId={slideSpaceId}
                 onSelect={(id) => navigate(`/slide/${slideSpaceId}/${id}`)} 
                 onUpdate={onUpdateSlides}
                 onAddChild={onAddSlide}

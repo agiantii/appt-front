@@ -143,7 +143,8 @@ const SpaceDetail: React.FC = () => {
 
         <div className="flex-1 overflow-y-auto px-4 custom-scrollbar">
           <FileTree 
-            data={slides} 
+            data={slides}
+            slideSpaceId={slideSpaceId}
             onUpdate={handleUpdateSlides} 
             onSelect={(id) => navigate(`/slide/${slideSpaceId}/${id}`)}
             onAddChild={(pid) => handleAddSlide(pid)}

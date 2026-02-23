@@ -18,13 +18,14 @@ import { ConfirmModal, InputModal } from '../Common/Modal';
 
 interface FileTreeProps {
   data: Slide[];
+  slideSpaceId?: string | number;
   onSelect?: (id: number) => void;
   onUpdate?: (updatedData: Slide[]) => void;
   onAddChild?: (parentId: number) => void;
   onAddRoot?: () => void;
 }
 
-const FileTree: React.FC<FileTreeProps> = ({ data, onSelect, onUpdate, onAddChild, onAddRoot }) => {
+const FileTree: React.FC<FileTreeProps> = ({ data, slideSpaceId, onSelect, onUpdate, onAddChild, onAddRoot }) => {
   const [localSlides, setLocalSlides] = useState<Slide[]>(data);
   const [expanded, setExpanded] = useState<Record<number, boolean>>({});
   const [draggedId, setDraggedId] = useState<number | null>(null);
@@ -60,7 +61,7 @@ const FileTree: React.FC<FileTreeProps> = ({ data, onSelect, onUpdate, onAddChil
   const buildTree = (nodes: Slide[], parentId: number | null = null): FileTreeNode[] => {
     return nodes
       .filter(node => node.parentId === parentId)
-      .sort((a, b) => a.title.localeCompare(b.title, undefined, { numeric: true, sensitivity: 'base' }))
+      // Use original order from API, don't sort locally
       .map(node => ({
         ...node,
         children: buildTree(nodes, node.id)
@@ -239,8 +240,14 @@ const FileTree: React.FC<FileTreeProps> = ({ data, onSelect, onUpdate, onAddChil
       
       const res = await slideApi.move(id, moveParams);
       if (res.statusCode === 0) {
-        // 后端返回完整列表时直接使用，否则本地更新
-        if (Array.isArray(res.data)) {
+        // Refresh all slides from server after move
+        if (slideSpaceId) {
+          const refreshRes = await slideApi.findAllBySpace(Number(slideSpaceId));
+          if (refreshRes.statusCode === 0) {
+            setLocalSlides(refreshRes.data);
+            if (onUpdate) onUpdate(refreshRes.data);
+          }
+        } else if (Array.isArray(res.data)) {
           setLocalSlides(res.data);
           if (onUpdate) onUpdate(res.data);
         } else {
