@@ -12,6 +12,7 @@ interface EditorHeaderProps {
   previewOpen: boolean;
   onTogglePreview: () => void;
   slideId: string | undefined;
+  onOpenCollaboratorModal: () => void;
 }
 
 const EditorHeader: React.FC<EditorHeaderProps> = ({ 
@@ -21,7 +22,8 @@ const EditorHeader: React.FC<EditorHeaderProps> = ({
   onSave, 
   previewOpen, 
   onTogglePreview,
-  slideId
+  slideId,
+  onOpenCollaboratorModal
 }) => {
   return (
     <div className="h-14 border-b border-white/5 flex items-center justify-between px-8 bg-[#09090b] z-20">
@@ -40,7 +42,10 @@ const EditorHeader: React.FC<EditorHeaderProps> = ({
               +3
             </div>
           </div>
-          <button className="flex items-center gap-2 px-4 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-[10px] font-black uppercase tracking-widest text-white/40 hover:text-white transition-all">
+          <button 
+            onClick={onOpenCollaboratorModal}
+            className="flex items-center gap-2 px-4 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-[10px] font-black uppercase tracking-widest text-white/40 hover:text-white transition-all"
+          >
              <Share2 className="w-3.5 h-3.5" />
              Collaborate
           </button>

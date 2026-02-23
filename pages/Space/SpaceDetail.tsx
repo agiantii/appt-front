@@ -66,7 +66,7 @@ const SpaceDetail: React.FC = () => {
         title: 'Untitled Presentation',
         slideSpaceId: Number(slideSpaceId),
         parentId,
-        content: '---\ntheme: seriph\n---\n# New Content\nStart typing...',
+        content: '---\ntheme: default\n---\n# New Content\nStart typing...',
         isPublic: false,
         allowComment: true
       });

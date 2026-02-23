@@ -26,6 +26,7 @@ import { useSlideParser } from './useSlideParser';
 import EditorHeader from './components/EditorHeader';
 import EditorSidebar from './components/EditorSidebar';
 import EditorPreview from './components/EditorPreview';
+import { CollaboratorModal } from '../../components/Editor/CollaboratorModal';
 
 // Yjs and Hocuspocus
 import * as Y from 'yjs';
@@ -133,6 +134,7 @@ const EditorPage: React.FC = () => {
   const [previewMode, setPreviewMode] = useState<'dev' | 'build'>('dev');
   const [outlineHeight, setOutlineHeight] = useState(240);
   const [snippets, setSnippets] = useState<Snippet[]>([]);
+  const [collaboratorModalOpen, setCollaboratorModalOpen] = useState(false);
 
   useEffect(() => {
     if (slideSpaceId) {
@@ -515,6 +517,13 @@ const EditorPage: React.FC = () => {
           previewOpen={previewOpen}
           onTogglePreview={() => setPreviewOpen(!previewOpen)}
           slideId={slideId}
+          onOpenCollaboratorModal={() => setCollaboratorModalOpen(true)}
+        />
+        <CollaboratorModal
+          isOpen={collaboratorModalOpen}
+          onClose={() => setCollaboratorModalOpen(false)}
+          slideId={Number(slideId)}
+          currentUser={currentUser}
         />
         <ResizableLayout 
           left={null}

@@ -12,8 +12,8 @@ export const slideApi = {
     api.delete<any, ApiResponse<null>>(`/slides/${id}`),
   saveContent: (id: number, content: string) => 
     api.post<any, ApiResponse<{ id: number; updatedAt: string }>>(`/slides/${id}/save`, { content }),
-  move: (id: number, parentId: number | null) => 
-    api.post<any, ApiResponse<Slide>>(`/slides/${id}/move`, { parentId }),
+  move: (id: number, params: { parentId: number | null; targetId?: number; position?: 'before' | 'after' }) => 
+    api.post<any, ApiResponse<Slide | Slide[]>>(`/slides/${id}/move`, params),
   findRecent: (limit?: number) => 
     api.get<any, ApiResponse<any[]>>('/slides/recent', { params: { limit } }),
   findOne: (id: number) => 

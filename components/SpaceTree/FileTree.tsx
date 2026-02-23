@@ -27,8 +27,6 @@ interface FileTreeProps {
 const FileTree: React.FC<FileTreeProps> = ({ data, onSelect, onUpdate, onAddChild, onAddRoot }) => {
   const [localSlides, setLocalSlides] = useState<Slide[]>(data);
   const [expanded, setExpanded] = useState<Record<number, boolean>>({});
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [editValue, setEditValue] = useState("");
   const [draggedId, setDraggedId] = useState<number | null>(null);
   const [dropTargetId, setDropTargetId] = useState<number | null>(null);
   const [dropPosition, setDropPosition] = useState<'before' | 'inside' | 'after' | null>(null);
@@ -39,7 +37,7 @@ const FileTree: React.FC<FileTreeProps> = ({ data, onSelect, onUpdate, onAddChil
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [slideToDelete, setSlideToDelete] = useState<number | null>(null);
   const [showRenameModal, setShowRenameModal] = useState(false);
-  const [slideToRename, setSlideToRename] = useState<{id: number; currentTitle: string} | null>(null);
+  const [slideToRename, setSlideToRename] = useState<{id: number; originalTitle: string} | null>(null);
 
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -84,14 +82,15 @@ const FileTree: React.FC<FileTreeProps> = ({ data, onSelect, onUpdate, onAddChil
       setSlideToRename(null);
       return;
     }
-    const titleToUse = newTitle.trim() || slideToRename.currentTitle;
-    if (!titleToUse) {
+    const trimmedTitle = newTitle.trim();
+    // 如果内容为空或与原标题相同，则不执行重命名
+    if (!trimmedTitle || trimmedTitle === slideToRename.originalTitle) {
       setShowRenameModal(false);
       setSlideToRename(null);
       return;
     }
     try {
-      const res = await slideApi.update(slideToRename.id, { title: titleToUse });
+      const res = await slideApi.update(slideToRename.id, { title: trimmedTitle });
       if (res.statusCode === 0) {
         const updated = localSlides.map(s => s.id === slideToRename.id ? res.data : s);
         setLocalSlides(updated);
@@ -137,7 +136,7 @@ const FileTree: React.FC<FileTreeProps> = ({ data, onSelect, onUpdate, onAddChil
   };
   
   const openRenameModal = (id: number, currentTitle: string) => {
-    setSlideToRename({ id, currentTitle });
+    setSlideToRename({ id, originalTitle: currentTitle });
     setShowRenameModal(true);
     setActiveMenuId(null);
   };
@@ -227,11 +226,28 @@ const FileTree: React.FC<FileTreeProps> = ({ data, onSelect, onUpdate, onAddChil
     }
 
     try {
-      const res = await slideApi.move(id, finalParentId);
+      // 构建移动参数：包含目标父节点和位置信息
+      const moveParams: { parentId: number | null; targetId?: number; position?: 'before' | 'after' } = { 
+        parentId: finalParentId 
+      };
+      
+      // 如果是 before/after 位置，需要传递 targetId 和 position 用于排序
+      if (targetId !== null && currentPosition && currentPosition !== 'inside') {
+        moveParams.targetId = targetId;
+        moveParams.position = currentPosition;
+      }
+      
+      const res = await slideApi.move(id, moveParams);
       if (res.statusCode === 0) {
-        const updated = localSlides.map(s => s.id === id ? res.data : s);
-        setLocalSlides(updated);
-        if (onUpdate) onUpdate(updated);
+        // 后端返回完整列表时直接使用，否则本地更新
+        if (Array.isArray(res.data)) {
+          setLocalSlides(res.data);
+          if (onUpdate) onUpdate(res.data);
+        } else {
+          const updated = localSlides.map(s => s.id === id ? res.data : s);
+          setLocalSlides(updated);
+          if (onUpdate) onUpdate(updated);
+        }
       }
     } catch (err) {
       console.error(err);
@@ -243,10 +259,14 @@ const FileTree: React.FC<FileTreeProps> = ({ data, onSelect, onUpdate, onAddChil
     }
   };
 
-  const TreeItem: React.FC<{ node: FileTreeNode; level: number }> = ({ node, level }) => {
+  interface TreeNodeProps {
+    node: FileTreeNode;
+    level: number;
+  }
+
+  const TreeNode: React.FC<TreeNodeProps> = ({ node, level }) => {
     const isExpanded = expanded[node.id];
     const hasChildren = node.children && node.children.length > 0;
-    const isEditing = editingId === node.id;
     const isTarget = dropTargetId === node.id;
     const isMenuActive = activeMenuId === node.id;
     const isBeingDragged = draggedId === node.id;
@@ -260,75 +280,46 @@ const FileTree: React.FC<FileTreeProps> = ({ data, onSelect, onUpdate, onAddChil
     };
 
     return (
-      <div 
+      <div
         className={`group/item select-none transition-all relative ${getDropIndicatorClass()} ${
           isTarget && dropPosition === 'inside' ? 'bg-blue-500/20 ring-1 ring-blue-500/40 rounded-md' : ''
         } ${isBeingDragged ? 'opacity-40' : ''}`}
         onDragOver={(e) => onDragOver(e, node.id, itemRef.current || undefined)}
         onDrop={(e) => onDrop(e, node.id)}
-        onDragEnd={onDragEnd}
       >
-        <div 
+        <div
           ref={itemRef}
-          draggable={!isEditing}
+          draggable={true}
           onDragStart={(e) => onDragStart(e, node.id)}
-          className={`flex items-center gap-1.5 px-2 py-1.5 hover:bg-white/5 rounded-md cursor-pointer relative transition-all ${isEditing ? 'bg-white/10' : ''}`}
+          onDragEnd={onDragEnd}
+          className="flex items-center gap-1.5 px-2 py-1.5 hover:bg-white/5 rounded-md cursor-pointer relative transition-all"
           style={{ paddingLeft: `${level * 16 + 8}px` }}
-          onClick={() => onSelect?.(node.id)}
-          onDoubleClick={(e) => {
-            e.stopPropagation();
-            setEditingId(node.id);
-            setEditValue(node.title);
-          }}
         >
           <div className={`cursor-grab active:cursor-grabbing transition-opacity ${isDragging ? 'opacity-30' : 'opacity-0 group-hover/item:opacity-20'}`}>
             <GripVertical className="w-3.5 h-3.5" />
           </div>
 
-          <button 
-            onClick={(e) => toggleExpand(e, node.id)} 
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleExpand(e, node.id);
+            }}
             className={`p-0.5 hover:bg-white/10 rounded transition-opacity ${hasChildren ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
           >
             {isExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
           </button>
-          
-          <FileText className={`w-4 h-4 ${hasChildren ? 'text-white/50' : 'text-white/30'}`} />
-          
-          {isEditing ? (
-            <input 
-              autoFocus
-              className="flex-1 bg-white/10 border border-white/30 rounded px-1.5 py-0.5 text-xs focus:outline-none focus:ring-1 focus:ring-white/40"
-              value={editValue}
-              onChange={(e) => setEditValue(e.target.value)}
-              onBlur={() => {
-                if (editValue.trim() && editValue !== node.title) {
-                  setSlideToRename({ id: node.id, currentTitle: editValue });
-                  setShowRenameModal(true);
-                }
-                setEditingId(null);
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  if (editValue.trim() && editValue !== node.title) {
-                    setSlideToRename({ id: node.id, currentTitle: editValue });
-                    setShowRenameModal(true);
-                  }
-                  setEditingId(null);
-                } else if (e.key === 'Escape') {
-                  setEditingId(null);
-                }
-              }}
-              onClick={(e) => e.stopPropagation()}
-            />
-          ) : (
-            <span className="flex-1 text-xs text-white/70 truncate py-0.5 font-medium">
+
+          <div
+            className="flex-1 flex items-center gap-1.5 min-w-0"
+            onClick={() => onSelect?.(node.id)}
+          >
+            <FileText className={`w-4 h-4 flex-shrink-0 ${hasChildren ? 'text-white/50' : 'text-white/30'}`} />
+            <span className="text-xs text-white/70 truncate py-0.5 font-medium">
               {node.title}
             </span>
-          )}
+          </div>
 
           <div className="flex items-center gap-0.5">
-            {/* 快捷新建按钮 */}
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -341,7 +332,7 @@ const FileTree: React.FC<FileTreeProps> = ({ data, onSelect, onUpdate, onAddChil
               <Plus className="w-3 h-3" />
             </button>
             <div className="relative">
-              <button 
+              <button
                 onClick={(e) => {
                   e.stopPropagation();
                   setActiveMenuId(isMenuActive ? null : node.id);
@@ -351,44 +342,43 @@ const FileTree: React.FC<FileTreeProps> = ({ data, onSelect, onUpdate, onAddChil
                 <MoreVertical className="w-3.5 h-3.5" />
               </button>
 
-            {isMenuActive && (
-              <div 
-                ref={menuRef}
-                className="absolute right-0 top-full mt-1 w-36 bg-[#1c1c1f] border border-white/10 rounded-lg shadow-2xl z-50 py-1 animate-in fade-in zoom-in-95 duration-100"
-              >
-                <button 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (onAddChild) onAddChild(node.id);
-                    setActiveMenuId(null);
-                    setExpanded(prev => ({ ...prev, [node.id]: true }));
-                  }}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-xs text-white/70 hover:bg-white/10 transition-colors"
+              {isMenuActive && (
+                <div
+                  ref={menuRef}
+                  className="absolute right-0 top-full mt-1 w-36 bg-[#1c1c1f] border border-white/10 rounded-lg shadow-2xl z-50 py-1 animate-in fade-in zoom-in-95 duration-100"
                 >
-                  <Plus className="w-3 h-3" /> New Slide
-                </button>
-                <button 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    openRenameModal(node.id, node.title);
-                    setEditingId(null);
-                  }}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-xs text-white/70 hover:bg-white/10 transition-colors"
-                >
-                  <Pencil className="w-3 h-3" /> Rename
-                </button>
-                <div className="h-px bg-white/5 my-1" />
-                <button 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    openDeleteModal(node.id);
-                  }}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-xs text-red-400 hover:bg-red-400/10 transition-colors"
-                >
-                  <Trash2 className="w-3 h-3" /> Delete
-                </button>
-              </div>
-            )}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (onAddChild) onAddChild(node.id);
+                      setActiveMenuId(null);
+                      setExpanded(prev => ({ ...prev, [node.id]: true }));
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-xs text-white/70 hover:bg-white/10 transition-colors"
+                  >
+                    <Plus className="w-3 h-3" /> New Slide
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openRenameModal(node.id, node.title);
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-xs text-white/70 hover:bg-white/10 transition-colors"
+                  >
+                    <Pencil className="w-3 h-3" /> Rename
+                  </button>
+                  <div className="h-px bg-white/5 my-1" />
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openDeleteModal(node.id);
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-xs text-red-400 hover:bg-red-400/10 transition-colors"
+                  >
+                    <Trash2 className="w-3 h-3" /> Delete
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -396,7 +386,7 @@ const FileTree: React.FC<FileTreeProps> = ({ data, onSelect, onUpdate, onAddChil
         {isExpanded && hasChildren && (
           <div className="mt-0.5">
             {node.children!.map(child => (
-              <TreeItem key={child.id} node={child} level={level + 1} />
+              <TreeNode key={child.id} node={child} level={level + 1} />
             ))}
           </div>
         )}
@@ -437,9 +427,7 @@ const FileTree: React.FC<FileTreeProps> = ({ data, onSelect, onUpdate, onAddChil
             <span className="text-[10px] text-white/20 uppercase font-bold">No Documents</span>
           </div>
         ) : (
-          tree.map(node => (
-            <TreeItem key={node.id} node={node} level={0} />
-          ))
+          tree.map(node => <TreeNode key={node.id} node={node} level={0} />)
         )}
       </div>
       
@@ -468,7 +456,7 @@ const FileTree: React.FC<FileTreeProps> = ({ data, onSelect, onUpdate, onAddChil
         onConfirm={handleRename}
         title="重命名文档"
         placeholder="输入新名称..."
-        defaultValue={slideToRename?.currentTitle || ''}
+        defaultValue={slideToRename?.originalTitle || ''}
         confirmText="确认"
         cancelText="取消"
       />
