@@ -197,76 +197,81 @@ const EditorPage: React.FC = () => {
   const [connectionInfo, setConnectionInfo] = useState<ConnectionInfo | null>(null);
   
   useEffect(() => {
-    if (currentSlide?.content) {
-      initialContentRef.current = currentSlide.content;
-    }
-  }, [currentSlide?.content]);
+    initialContentRef.current = currentSlide?.content || '';
+  }, [currentSlide?.id]);
   
-  // Fetch WebSocket connection info from backend
+  // Fetch WebSocket connection info and initialize WebSocket
   useEffect(() => {
     if (!slideId) return;
-    
-    slideApi.getConnectionInfo(Number(slideId)).then(res => {
-      if (res.statusCode === 0) {
-        setConnectionInfo(res.data);
+
+    const initWebSocket = async () => {
+      try {
+        const res = await slideApi.getConnectionInfo(Number(slideId));
+        if (res.statusCode !== 0 || !res.data?.token) {
+          throw new Error(res.message || '获取连接信息失败');
+        }
+
+        const connInfo = res.data;
+        setConnectionInfo(connInfo);
+
+        if (providerRef.current) providerRef.current.destroy();
+        if (ydocRef.current) ydocRef.current.destroy();
+
+        const ydoc = new Y.Doc();
+        ydocRef.current = ydoc;
+        const yText = ydoc.getText('codemirror');
+        yTextRef.current = yText;
+
+        const provider = new HocuspocusProvider({
+          url: connInfo.url,
+          name: connInfo.docName,
+          document: ydoc,
+          token: connInfo.token,
+          onConnect: () => {
+            console.log('[WebSocket] Connected to:', connInfo.docName);
+          },
+          onDisconnect: () => {
+            console.log('[WebSocket] Disconnected from:', connInfo.docName);
+          },
+          onAuthenticationFailed: () => {
+            alert('WebSocket 认证失败，请重新登录');
+          },
+        });
+
+        providerRef.current = provider;
+
+        const generateUserColor = (username: string): string => {
+          const colors = [
+            '#ef4444', '#f97316', '#f59e0b', '#84cc16', '#10b981',
+            '#06b6d4', '#3b82f6', '#6366f1', '#8b5cf6', '#d946ef', '#f43f5e'
+          ];
+          let hash = 0;
+          for (let i = 0; i < username.length; i++) {
+            hash = username.charCodeAt(i) + ((hash << 5) - hash);
+          }
+          return colors[Math.abs(hash) % colors.length];
+        };
+
+        const userRes = await userApi.getCurrentUser();
+        if (userRes.statusCode === 0) {
+          provider.setAwarenessField('user', {
+            name: userRes.data.username,
+            color: generateUserColor(userRes.data.username)
+          });
+        }
+      } catch (err) {
+        console.error('[WebSocket] 初始化失败:', err);
+        alert('协同编辑连接失败: ' + (err instanceof Error ? err.message : '未知错误'));
       }
-    });
-  }, [slideId]);
-  
-  useEffect(() => {
-    if (!slideId || !connectionInfo) return;
-    
-    if (providerRef.current) providerRef.current.destroy();
-    if (ydocRef.current) ydocRef.current.destroy();
-    
-    const ydoc = new Y.Doc();
-    ydocRef.current = ydoc;
-    const yText = ydoc.getText('codemirror');
-    yTextRef.current = yText;
-    
-    const provider = new HocuspocusProvider({
-      url: connectionInfo.url,
-      name: connectionInfo.docName,
-      document: ydoc,
-      token: connectionInfo.token,
-      onConnect: () => {
-        console.log('[WebSocket] Connected to:', connectionInfo.docName);
-      },
-      onDisconnect: () => {
-        console.log('[WebSocket] Disconnected from:', connectionInfo.docName);
-      },
-    });
-    
-    providerRef.current = provider;
-    // 根据用户名生成确定性颜色
-    const generateUserColor = (username: string): string => {
-      const colors = [
-        '#ef4444', '#f97316', '#f59e0b', '#84cc16', '#10b981',
-        '#06b6d4', '#3b82f6', '#6366f1', '#8b5cf6', '#d946ef', '#f43f5e'
-      ];
-      let hash = 0;
-      for (let i = 0; i < username.length; i++) {
-        hash = username.charCodeAt(i) + ((hash << 5) - hash);
-      }
-      return colors[Math.abs(hash) % colors.length];
     };
 
-    const fetchUser = async () => {
-      const res = await userApi.getCurrentUser();
-      if (res.statusCode === 0) {
-        provider.setAwarenessField('user', { 
-          name: res.data.username, 
-          color: generateUserColor(res.data.username)
-        });
-      }
-    };
-    fetchUser();
-    
+    initWebSocket();
+
     return () => {
-      provider.destroy();
-      ydoc.destroy();
+      providerRef.current?.destroy();
+      ydocRef.current?.destroy();
     };
-  }, [slideId, connectionInfo]);
+  }, [slideId]);
 
   const insertSnippet = useCallback((code: string) => {
     if (editorViewRef.current) {
@@ -332,11 +337,6 @@ const EditorPage: React.FC = () => {
     const provider = providerRef.current;
 
     let initialDoc = "";
-    // try {
-    //   initialDoc = yText.toString() || initialContentRef.current || "";
-    // } catch(e) {
-    //   initialDoc = initialContentRef.current || "";
-    // }
 
     const view = new EditorView({
       state: EditorState.create({
@@ -353,18 +353,18 @@ const EditorPage: React.FC = () => {
           }])),
           slidevDarkTheme,
           syntaxHighlighting(slidevHighlightStyle),
-          // EditorView.updateListener.of((update) => {
-          //   if (update.docChanged && update.view) {
-          //     try {
-          //       const newDocString = update.view.state.doc.toString();
-          //       if (newDocString !== undefined) {
-          //         setContent(newDocString);
-          //       }
-          //     } catch (err) {
-          //       console.warn("Failed to get doc string in update listener", err);
-          //     }
-          //   }
-          // }),
+          EditorView.updateListener.of((update) => {
+            if (update.docChanged && update.view) {
+              try {
+                const newDocString = update.view.state.doc.toString();
+                if (newDocString !== undefined) {
+                  setContent(newDocString);
+                }
+              } catch (err) {
+                console.warn("Failed to get doc string in update listener", err);
+              }
+            }
+          }),
         ],
       }),
       parent: editorContainerRef.current,
