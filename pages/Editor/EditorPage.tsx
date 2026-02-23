@@ -229,11 +229,6 @@ const EditorPage: React.FC = () => {
       name: connectionInfo.docName,
       document: ydoc,
       token: connectionInfo.token,
-      onSynced: () => {
-        if (yText && yText.toString().length === 0 && initialContentRef.current) {
-          yText.insert(0, initialContentRef.current);
-        }
-      },
       onConnect: () => {
         console.log('[WebSocket] Connected to:', connectionInfo.docName);
       },
@@ -243,12 +238,25 @@ const EditorPage: React.FC = () => {
     });
     
     providerRef.current = provider;
+    // 根据用户名生成确定性颜色
+    const generateUserColor = (username: string): string => {
+      const colors = [
+        '#ef4444', '#f97316', '#f59e0b', '#84cc16', '#10b981',
+        '#06b6d4', '#3b82f6', '#6366f1', '#8b5cf6', '#d946ef', '#f43f5e'
+      ];
+      let hash = 0;
+      for (let i = 0; i < username.length; i++) {
+        hash = username.charCodeAt(i) + ((hash << 5) - hash);
+      }
+      return colors[Math.abs(hash) % colors.length];
+    };
+
     const fetchUser = async () => {
       const res = await userApi.getCurrentUser();
       if (res.statusCode === 0) {
         provider.setAwarenessField('user', { 
           name: res.data.username, 
-          color: '#' + Math.floor(Math.random() * 16777215).toString(16) 
+          color: generateUserColor(res.data.username)
         });
       }
     };
@@ -324,11 +332,11 @@ const EditorPage: React.FC = () => {
     const provider = providerRef.current;
 
     let initialDoc = "";
-    try {
-      initialDoc = yText.toString() || initialContentRef.current || "";
-    } catch(e) {
-      initialDoc = initialContentRef.current || "";
-    }
+    // try {
+    //   initialDoc = yText.toString() || initialContentRef.current || "";
+    // } catch(e) {
+    //   initialDoc = initialContentRef.current || "";
+    // }
 
     const view = new EditorView({
       state: EditorState.create({
@@ -345,18 +353,18 @@ const EditorPage: React.FC = () => {
           }])),
           slidevDarkTheme,
           syntaxHighlighting(slidevHighlightStyle),
-          EditorView.updateListener.of((update) => {
-            if (update.docChanged && update.view) {
-              try {
-                const newDocString = update.view.state.doc.toString();
-                if (newDocString !== undefined) {
-                  setContent(newDocString);
-                }
-              } catch (err) {
-                console.warn("Failed to get doc string in update listener", err);
-              }
-            }
-          }),
+          // EditorView.updateListener.of((update) => {
+          //   if (update.docChanged && update.view) {
+          //     try {
+          //       const newDocString = update.view.state.doc.toString();
+          //       if (newDocString !== undefined) {
+          //         setContent(newDocString);
+          //       }
+          //     } catch (err) {
+          //       console.warn("Failed to get doc string in update listener", err);
+          //     }
+          //   }
+          // }),
         ],
       }),
       parent: editorContainerRef.current,
