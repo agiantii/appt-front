@@ -1,9 +1,40 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { UserPlus, Trash2, Shield, Search } from 'lucide-react';
+import { UserPlus, Trash2, Shield, Search, CheckCircle, AlertCircle } from 'lucide-react';
 import { Modal } from '../Common/Modal';
 import { slideApi } from '../../api/slide';
 import { userApi } from '../../api/user';
 import { User as UserType } from '../../types';
+
+// Toast 通知组件
+interface Toast {
+  id: number;
+  message: string;
+  type: 'success' | 'error';
+}
+
+const ToastContainer: React.FC<{ toasts: Toast[]; onRemove: (id: number) => void }> = ({ toasts, onRemove }) => {
+  useEffect(() => {
+    toasts.forEach(toast => {
+      setTimeout(() => onRemove(toast.id), 2000);
+    });
+  }, [toasts, onRemove]);
+
+  return (
+    <div className="fixed top-4 right-4 z-[100] space-y-2">
+      {toasts.map(toast => (
+        <div
+          key={toast.id}
+          className={`flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg animate-in fade-in slide-in-from-right duration-200 ${
+            toast.type === 'success' ? 'bg-green-500/90 text-white' : 'bg-red-500/90 text-white'
+          }`}
+        >
+          {toast.type === 'success' ? <CheckCircle className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
+          <span className="text-sm font-medium">{toast.message}</span>
+        </div>
+      ))}
+    </div>
+  );
+};
 
 interface CollaboratorModalProps {
   isOpen: boolean;
@@ -37,10 +68,19 @@ export const CollaboratorModal: React.FC<CollaboratorModalProps> = ({
   const [newUsername, setNewUsername] = useState('');
   const [newRole, setNewRole] = useState<'editor' | 'viewer' | "commenter ">('viewer');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
   const [searchResults, setSearchResults] = useState<UserType[]>([]);
   const [showSearchResults, setShowSearchResults] = useState(false);
   const [searchLoading, setSearchLoading] = useState(false);
+  const [toasts, setToasts] = useState<Toast[]>([]);
+
+  const addToast = (message: string, type: 'success' | 'error') => {
+    const id = Date.now();
+    setToasts(prev => [...prev, { id, message, type }]);
+  };
+
+  const removeToast = (id: number) => {
+    setToasts(prev => prev.filter(t => t.id !== id));
+  };
 
   const fetchCollaborators = async () => {
     if (!validSlideId) return;
@@ -119,11 +159,10 @@ export const CollaboratorModal: React.FC<CollaboratorModalProps> = ({
   const handleAddCollaborator = async () => {
     if (!validSlideId || !newUsername.trim()) return;
     setLoading(true);
-    setError('');
     try {
       const userRes = await userApi.search({ keyword: newUsername.trim(), page: 1, pageSize: 10 });
       if (userRes.statusCode !== 0 || !userRes.data.items || userRes.data.items.length === 0) {
-        setError('User not found');
+        addToast('User not found', 'error');
         setLoading(false);
         return;
       }
@@ -133,11 +172,12 @@ export const CollaboratorModal: React.FC<CollaboratorModalProps> = ({
         setNewUsername('');
         setSearchResults([]);
         fetchCollaborators();
+        addToast('Collaborator added successfully', 'success');
       } else {
-        setError(res.message || 'Failed to add collaborator');
+        addToast(res.message || 'Failed to add collaborator', 'error');
       }
     } catch (err) {
-      setError('Failed to add collaborator');
+      addToast('Failed to add collaborator', 'error');
     } finally {
       setLoading(false);
     }
@@ -149,9 +189,12 @@ export const CollaboratorModal: React.FC<CollaboratorModalProps> = ({
       const res = await slideApi.updateCollaborator(validSlideId, userId, role);
       if (res.statusCode === 0) {
         fetchCollaborators();
+        addToast('Role updated successfully', 'success');
+      } else {
+        addToast(res.message || 'Failed to update role', 'error');
       }
     } catch (err) {
-      console.error('Failed to update role', err);
+      addToast('Failed to update role', 'error');
     }
   };
 
@@ -161,9 +204,12 @@ export const CollaboratorModal: React.FC<CollaboratorModalProps> = ({
       const res = await slideApi.removeCollaborator(validSlideId, userId);
       if (res.statusCode === 0) {
         fetchCollaborators();
+        addToast('Collaborator removed successfully', 'success');
+      } else {
+        addToast(res.message || 'Failed to remove collaborator', 'error');
       }
     } catch (err) {
-      console.error('Failed to remove collaborator', err);
+      addToast('Failed to remove collaborator', 'error');
     }
   };
 
@@ -240,9 +286,7 @@ export const CollaboratorModal: React.FC<CollaboratorModalProps> = ({
           </div>
         )}
 
-        {error && (
-          <div className="text-red-400 text-xs">{error}</div>
-        )}
+        <ToastContainer toasts={toasts} onRemove={removeToast} />
 
         <div className="space-y-2 max-h-[300px] overflow-y-auto">
           {/* Owner first */}

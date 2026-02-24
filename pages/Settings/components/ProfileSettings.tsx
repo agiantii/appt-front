@@ -1,8 +1,39 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { User, Camera } from 'lucide-react';
+import { User, Camera, CheckCircle, AlertCircle } from 'lucide-react';
 import { userApi } from '../../../api/user';
 import { uploadApi } from '../../../api/upload';
 import { User as UserType } from '../../../types';
+
+// Toast 通知组件
+interface Toast {
+  id: number;
+  message: string;
+  type: 'success' | 'error';
+}
+
+const ToastContainer: React.FC<{ toasts: Toast[]; onRemove: (id: number) => void }> = ({ toasts, onRemove }) => {
+  useEffect(() => {
+    toasts.forEach(toast => {
+      setTimeout(() => onRemove(toast.id), 2000);
+    });
+  }, [toasts, onRemove]);
+
+  return (
+    <div className="fixed top-4 right-4 z-[100] space-y-2">
+      {toasts.map(toast => (
+        <div
+          key={toast.id}
+          className={`flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg animate-in fade-in slide-in-from-right duration-200 ${
+            toast.type === 'success' ? 'bg-green-500/90 text-white' : 'bg-red-500/90 text-white'
+          }`}
+        >
+          {toast.type === 'success' ? <CheckCircle className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
+          <span className="text-sm font-medium">{toast.message}</span>
+        </div>
+      ))}
+    </div>
+  );
+};
 
 const ProfileSettings: React.FC = () => {
   const [user, setUser] = useState<UserType | null>(null);
@@ -13,8 +44,17 @@ const ProfileSettings: React.FC = () => {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
-  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [toasts, setToasts] = useState<Toast[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const addToast = (message: string, type: 'success' | 'error') => {
+    const id = Date.now();
+    setToasts(prev => [...prev, { id, message, type }]);
+  };
+
+  const removeToast = (id: number) => {
+    setToasts(prev => prev.filter(t => t.id !== id));
+  };
 
   useEffect(() => {
     userApi.getCurrentUser().then(res => {
@@ -32,18 +72,17 @@ const ProfileSettings: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    setMessage(null);
 
     try {
       const res = await userApi.updateCurrentUser(formData);
       if (res.statusCode === 0) {
         setUser(res.data);
-        setMessage({ type: 'success', text: 'Profile updated successfully' });
+        addToast('Profile updated successfully', 'success');
       } else {
-        setMessage({ type: 'error', text: res.message || 'Update failed' });
+        addToast(res.message || 'Update failed', 'error');
       }
     } catch (err) {
-      setMessage({ type: 'error', text: 'Network error, please try again' });
+      addToast('Network error, please try again', 'error');
     } finally {
       setIsLoading(false);
     }
@@ -58,7 +97,6 @@ const ProfileSettings: React.FC = () => {
     if (!file) return;
 
     setIsUploading(true);
-    setMessage(null);
 
     try {
       const uploadRes = await uploadApi.uploadImage(file);
@@ -71,15 +109,15 @@ const ProfileSettings: React.FC = () => {
         if (updateRes.statusCode === 0) {
           setUser(updateRes.data);
           setFormData(prev => ({ ...prev, avatarUrl: newAvatarUrl }));
-          setMessage({ type: 'success', text: 'Avatar updated successfully' });
+          addToast('Avatar updated successfully', 'success');
         } else {
-          setMessage({ type: 'error', text: updateRes.message || 'Failed to update avatar' });
+          addToast(updateRes.message || 'Failed to update avatar', 'error');
         }
       } else {
-        setMessage({ type: 'error', text: uploadRes.message || 'Upload failed' });
+        addToast(uploadRes.message || 'Upload failed', 'error');
       }
     } catch (err) {
-      setMessage({ type: 'error', text: 'Network error, please try again' });
+      addToast('Network error, please try again', 'error');
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) {
@@ -95,11 +133,7 @@ const ProfileSettings: React.FC = () => {
         <p className="text-white/40">Manage your account details and public appearance.</p>
       </div>
 
-      {message && (
-        <div className={`p-4 rounded-xl ${message.type === 'success' ? 'bg-green-500/10 border border-green-500/20 text-green-400' : 'bg-red-500/10 border border-red-500/20 text-red-400'}`}>
-          {message.text}
-        </div>
-      )}
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
 
       {user && (
         <form onSubmit={handleSubmit} className="space-y-6">

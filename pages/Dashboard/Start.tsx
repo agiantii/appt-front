@@ -1,11 +1,42 @@
 
 import React, { useEffect, useState, useRef } from 'react';
-import { Plus, Clock, Star, Users, ArrowRight, BookOpen, Box, Zap, Sparkles, Search, ChevronDown, X } from 'lucide-react';
+import { Plus, Clock, Star, Users, ArrowRight, BookOpen, Box, Zap, Sparkles, Search, ChevronDown, X, CheckCircle, AlertCircle } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { slideApi } from '../../api/slide';
 import { spaceApi } from '../../api/space';
 import { userApi } from '../../api/user';
 import { Slide, SlideSpace, User } from '../../types';
+
+// Toast 通知组件
+interface Toast {
+  id: number;
+  message: string;
+  type: 'success' | 'error';
+}
+
+const ToastContainer: React.FC<{ toasts: Toast[]; onRemove: (id: number) => void }> = ({ toasts, onRemove }) => {
+  useEffect(() => {
+    toasts.forEach(toast => {
+      setTimeout(() => onRemove(toast.id), 2000);
+    });
+  }, [toasts, onRemove]);
+
+  return (
+    <div className="fixed top-4 right-4 z-[100] space-y-2">
+      {toasts.map(toast => (
+        <div
+          key={toast.id}
+          className={`flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg animate-in fade-in slide-in-from-right duration-200 ${
+            toast.type === 'success' ? 'bg-green-500/90 text-white' : 'bg-red-500/90 text-white'
+          }`}
+        >
+          {toast.type === 'success' ? <CheckCircle className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
+          <span className="text-sm font-medium">{toast.message}</span>
+        </div>
+      ))}
+    </div>
+  );
+};
 
 interface CreateSlideModalProps {
   isOpen: boolean;
@@ -166,6 +197,16 @@ const StartPage: React.FC = () => {
   const [spaces, setSpaces] = useState<SlideSpace[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [toasts, setToasts] = useState<Toast[]>([]);
+
+  const addToast = (message: string, type: 'success' | 'error') => {
+    const id = Date.now();
+    setToasts(prev => [...prev, { id, message, type }]);
+  };
+
+  const removeToast = (id: number) => {
+    setToasts(prev => prev.filter(t => t.id !== id));
+  };
 
   useEffect(() => {
     userApi.getCurrentUser().then(res => {
@@ -190,10 +231,13 @@ const StartPage: React.FC = () => {
         allowComment: true
       });
       if (res.statusCode === 0) {
+        addToast('Slide created successfully', 'success');
         navigate(`/slide/${spaceId}/${res.data.id}`);
+      } else {
+        addToast(res.message || 'Failed to create slide', 'error');
       }
     } catch (err) {
-      console.error('Failed to create slide:', err);
+      addToast('Failed to create slide', 'error');
     }
   };
 
@@ -340,6 +384,8 @@ const StartPage: React.FC = () => {
           ))}
         </div>
       </section>
+
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>
   );
 };

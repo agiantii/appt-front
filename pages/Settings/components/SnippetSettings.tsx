@@ -1,17 +1,52 @@
 import React, { useState, useEffect } from 'react';
-import { Code, Plus, Trash2 } from 'lucide-react';
+import { Code, Plus, Trash2, CheckCircle, AlertCircle } from 'lucide-react';
 import { snippetApi } from '../../../api/snippet';
 import { Snippet } from '../../../types';
 import SnippetEditor from './SnippetEditor';
 
+// Toast 通知组件
+interface Toast {
+  id: number;
+  message: string;
+  type: 'success' | 'error';
+}
+
+const ToastContainer: React.FC<{ toasts: Toast[]; onRemove: (id: number) => void }> = ({ toasts, onRemove }) => {
+  useEffect(() => {
+    toasts.forEach(toast => {
+      setTimeout(() => onRemove(toast.id), 2000);
+    });
+  }, [toasts, onRemove]);
+
+  return (
+    <div className="fixed top-4 right-4 z-[100] space-y-2">
+      {toasts.map(toast => (
+        <div
+          key={toast.id}
+          className={`flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg animate-in fade-in slide-in-from-right duration-200 ${
+            toast.type === 'success' ? 'bg-green-500/90 text-white' : 'bg-red-500/90 text-white'
+          }`}
+        >
+          {toast.type === 'success' ? <CheckCircle className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
+          <span className="text-sm font-medium">{toast.message}</span>
+        </div>
+      ))}
+    </div>
+  );
+};
+
 const SnippetSettings: React.FC = () => {
   const [snippets, setSnippets] = useState<Snippet[]>([]);
   const [activeSnippetId, setActiveSnippetId] = useState<number | null>(null);
-  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [toasts, setToasts] = useState<Toast[]>([]);
 
-  const showMessage = (type: 'success' | 'error', text: string) => {
-    setMessage({ type, text });
-    setTimeout(() => setMessage(null), 3000);
+  const addToast = (message: string, type: 'success' | 'error') => {
+    const id = Date.now();
+    setToasts(prev => [...prev, { id, message, type }]);
+  };
+
+  const removeToast = (id: number) => {
+    setToasts(prev => prev.filter(t => t.id !== id));
   };
 
   useEffect(() => {
@@ -54,10 +89,10 @@ const SnippetSettings: React.FC = () => {
       const res = await snippetApi.update(id, { name: newName });
       if (res.statusCode === 0) {
         setSnippets(snippets.map(s => s.id === id ? res.data : s));
-        showMessage('success', 'Snippet name updated');
+        addToast('Snippet name updated', 'success');
       }
     } catch (err) {
-      showMessage('error', 'Failed to update name');
+      addToast('Failed to update name', 'error');
     }
   };
 
@@ -66,20 +101,16 @@ const SnippetSettings: React.FC = () => {
       const res = await snippetApi.update(id, { content });
       if (res.statusCode === 0) {
         setSnippets(snippets.map(s => s.id === id ? res.data : s));
-        showMessage('success', 'Snippet content updated');
+        addToast('Snippet content updated', 'success');
       }
     } catch (err) {
-      showMessage('error', 'Failed to update content');
+      addToast('Failed to update content', 'error');
     }
   };
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
-      {message && (
-        <div className={`p-4 rounded-xl ${message.type === 'success' ? 'bg-green-500/10 border border-green-500/20 text-green-400' : 'bg-red-500/10 border border-red-500/20 text-red-400'}`}>
-          {message.text}
-        </div>
-      )}
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight mb-2">Workspace Snippets</h1>

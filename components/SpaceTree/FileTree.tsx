@@ -11,10 +11,43 @@ import {
   FolderPlus, 
   FilePlus,
   GripVertical,
-  Plus
+  Plus,
+  CheckCircle,
+  AlertCircle
 } from 'lucide-react';
 import { Slide, FileTreeNode } from '../../types';
 import { ConfirmModal, InputModal } from '../Common/Modal';
+
+// Toast 通知组件
+interface Toast {
+  id: number;
+  message: string;
+  type: 'success' | 'error';
+}
+
+const ToastContainer: React.FC<{ toasts: Toast[]; onRemove: (id: number) => void }> = ({ toasts, onRemove }) => {
+  useEffect(() => {
+    toasts.forEach(toast => {
+      setTimeout(() => onRemove(toast.id), 2000);
+    });
+  }, [toasts, onRemove]);
+
+  return (
+    <div className="fixed top-4 right-4 z-[100] space-y-2">
+      {toasts.map(toast => (
+        <div
+          key={toast.id}
+          className={`flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg animate-in fade-in slide-in-from-right duration-200 ${
+            toast.type === 'success' ? 'bg-green-500/90 text-white' : 'bg-red-500/90 text-white'
+          }`}
+        >
+          {toast.type === 'success' ? <CheckCircle className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
+          <span className="text-sm font-medium">{toast.message}</span>
+        </div>
+      ))}
+    </div>
+  );
+};
 
 interface FileTreeProps {
   data: Slide[];
@@ -33,6 +66,7 @@ const FileTree: React.FC<FileTreeProps> = ({ data, slideSpaceId, onSelect, onUpd
   const [dropPosition, setDropPosition] = useState<'before' | 'inside' | 'after' | null>(null);
   const [activeMenuId, setActiveMenuId] = useState<number | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [toasts, setToasts] = useState<Toast[]>([]);
   
   // Modal states
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -41,6 +75,15 @@ const FileTree: React.FC<FileTreeProps> = ({ data, slideSpaceId, onSelect, onUpd
   const [slideToRename, setSlideToRename] = useState<{id: number; originalTitle: string} | null>(null);
 
   const menuRef = useRef<HTMLDivElement>(null);
+
+  const addToast = (message: string, type: 'success' | 'error') => {
+    const id = Date.now();
+    setToasts(prev => [...prev, { id, message, type }]);
+  };
+
+  const removeToast = (id: number) => {
+    setToasts(prev => prev.filter(t => t.id !== id));
+  };
 
   // Close context menu when clicking outside
   useEffect(() => {
@@ -96,9 +139,12 @@ const FileTree: React.FC<FileTreeProps> = ({ data, slideSpaceId, onSelect, onUpd
         const updated = localSlides.map(s => s.id === slideToRename.id ? res.data : s);
         setLocalSlides(updated);
         if (onUpdate) onUpdate(updated);
+        addToast('Document renamed successfully', 'success');
+      } else {
+        addToast(res.message || 'Failed to rename document', 'error');
       }
     } catch (err) {
-      console.error(err);
+      addToast('Failed to rename document', 'error');
     }
     setShowRenameModal(false);
     setSlideToRename(null);
@@ -121,9 +167,12 @@ const FileTree: React.FC<FileTreeProps> = ({ data, slideSpaceId, onSelect, onUpd
         const updated = localSlides.filter(s => !idsToDelete.has(s.id));
         setLocalSlides(updated);
         if (onUpdate) onUpdate(updated);
+        addToast('Document deleted successfully', 'success');
+      } else {
+        addToast(res.message || 'Failed to delete document', 'error');
       }
     } catch (err) {
-      console.error(err);
+      addToast('Failed to delete document', 'error');
     }
     setShowDeleteModal(false);
     setSlideToDelete(null);
@@ -255,9 +304,12 @@ const FileTree: React.FC<FileTreeProps> = ({ data, slideSpaceId, onSelect, onUpd
           setLocalSlides(updated);
           if (onUpdate) onUpdate(updated);
         }
+        addToast('Document moved successfully', 'success');
+      } else {
+        addToast(res.message || 'Failed to move document', 'error');
       }
     } catch (err) {
-      console.error(err);
+      addToast('Failed to move document', 'error');
     }
     setDraggedId(null);
     
@@ -413,12 +465,6 @@ const FileTree: React.FC<FileTreeProps> = ({ data, slideSpaceId, onSelect, onUpd
           >
             <FilePlus className="w-3.5 h-3.5" />
           </button>
-          <button 
-            title="New Folder (Collection)"
-            className="p-1.5 hover:bg-white/5 text-white/30 hover:text-white rounded transition-colors"
-          >
-            <FolderPlus className="w-3.5 h-3.5" />
-          </button>
         </div>
       </div>
 
@@ -467,6 +513,8 @@ const FileTree: React.FC<FileTreeProps> = ({ data, slideSpaceId, onSelect, onUpd
         confirmText="确认"
         cancelText="取消"
       />
+
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>
   );
 };

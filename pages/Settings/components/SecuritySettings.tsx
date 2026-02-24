@@ -1,6 +1,37 @@
-import React, { useState } from 'react';
-import { Shield, Lock, Eye, EyeOff } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Shield, Lock, Eye, EyeOff, CheckCircle, AlertCircle } from 'lucide-react';
 import { userApi } from '../../../api/user';
+
+// Toast 通知组件
+interface Toast {
+  id: number;
+  message: string;
+  type: 'success' | 'error';
+}
+
+const ToastContainer: React.FC<{ toasts: Toast[]; onRemove: (id: number) => void }> = ({ toasts, onRemove }) => {
+  useEffect(() => {
+    toasts.forEach(toast => {
+      setTimeout(() => onRemove(toast.id), 2000);
+    });
+  }, [toasts, onRemove]);
+
+  return (
+    <div className="fixed top-4 right-4 z-[100] space-y-2">
+      {toasts.map(toast => (
+        <div
+          key={toast.id}
+          className={`flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg animate-in fade-in slide-in-from-right duration-200 ${
+            toast.type === 'success' ? 'bg-green-500/90 text-white' : 'bg-red-500/90 text-white'
+          }`}
+        >
+          {toast.type === 'success' ? <CheckCircle className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
+          <span className="text-sm font-medium">{toast.message}</span>
+        </div>
+      ))}
+    </div>
+  );
+};
 
 const SecuritySettings: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -14,19 +45,27 @@ const SecuritySettings: React.FC = () => {
     confirm: false
   });
   const [isLoading, setIsLoading] = useState(false);
-  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [toasts, setToasts] = useState<Toast[]>([]);
+
+  const addToast = (message: string, type: 'success' | 'error') => {
+    const id = Date.now();
+    setToasts(prev => [...prev, { id, message, type }]);
+  };
+
+  const removeToast = (id: number) => {
+    setToasts(prev => prev.filter(t => t.id !== id));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setMessage(null);
 
     if (formData.newPassword !== formData.confirmPassword) {
-      setMessage({ type: 'error', text: 'New passwords do not match' });
+      addToast('New passwords do not match', 'error');
       return;
     }
 
     if (formData.newPassword.length < 6) {
-      setMessage({ type: 'error', text: 'Password must be at least 6 characters' });
+      addToast('Password must be at least 6 characters', 'error');
       return;
     }
 
@@ -39,13 +78,13 @@ const SecuritySettings: React.FC = () => {
       });
 
       if (res.statusCode === 0) {
-        setMessage({ type: 'success', text: 'Password changed successfully' });
+        addToast('Password changed successfully', 'success');
         setFormData({ currentPassword: '', newPassword: '', confirmPassword: '' });
       } else {
-        setMessage({ type: 'error', text: res.message || 'Failed to change password' });
+        addToast(res.message || 'Failed to change password', 'error');
       }
     } catch (err) {
-      setMessage({ type: 'error', text: 'Network error, please try again' });
+      addToast('Network error, please try again', 'error');
     } finally {
       setIsLoading(false);
     }
@@ -62,11 +101,7 @@ const SecuritySettings: React.FC = () => {
         <p className="text-white/40">Manage your password and account security.</p>
       </div>
 
-      {message && (
-        <div className={`p-4 rounded-xl ${message.type === 'success' ? 'bg-green-500/10 border border-green-500/20 text-green-400' : 'bg-red-500/10 border border-red-500/20 text-red-400'}`}>
-          {message.text}
-        </div>
-      )}
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
 
       <div className="p-8 bg-[#0c0c0e] border border-white/10 rounded-3xl space-y-6">
         <div className="flex items-center gap-3 mb-6">

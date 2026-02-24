@@ -12,7 +12,9 @@ import {
   History,
   ArrowRight,
   Zap,
-  AlertTriangle
+  AlertTriangle,
+  CheckCircle,
+  AlertCircle
 } from 'lucide-react';
 import { slideApi } from '../../api/slide';
 import { snippetApi } from '../../api/snippet';
@@ -115,6 +117,37 @@ const slidevHighlightStyle = HighlightStyle.define([
   { tag: t.list, color: "#fcd34d" },
 ]);
 
+// Toast 通知组件
+interface Toast {
+  id: number;
+  message: string;
+  type: 'success' | 'error';
+}
+
+const ToastContainer: React.FC<{ toasts: Toast[]; onRemove: (id: number) => void }> = ({ toasts, onRemove }) => {
+  useEffect(() => {
+    toasts.forEach(toast => {
+      setTimeout(() => onRemove(toast.id), 2000);
+    });
+  }, [toasts, onRemove]);
+
+  return (
+    <div className="fixed top-4 right-4 z-[100] space-y-2">
+      {toasts.map(toast => (
+        <div
+          key={toast.id}
+          className={`flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg animate-in fade-in slide-in-from-right duration-200 ${
+            toast.type === 'success' ? 'bg-green-500/90 text-white' : 'bg-red-500/90 text-white'
+          }`}
+        >
+          {toast.type === 'success' ? <CheckCircle className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
+          <span className="text-sm font-medium">{toast.message}</span>
+        </div>
+      ))}
+    </div>
+  );
+};
+
 const EditorPage: React.FC = () => {
   const { slideSpaceId, slideId } = useParams();
   const navigate = useNavigate();
@@ -139,6 +172,16 @@ const EditorPage: React.FC = () => {
   const [collaboratorModalOpen, setCollaboratorModalOpen] = useState(false);
   const [permissionDeniedModalOpen, setPermissionDeniedModalOpen] = useState(false);
   const [permissionCountdown, setPermissionCountdown] = useState(2);
+  const [toasts, setToasts] = useState<Toast[]>([]);
+
+  const addToast = (message: string, type: 'success' | 'error') => {
+    const id = Date.now();
+    setToasts(prev => [...prev, { id, message, type }]);
+  };
+
+  const removeToast = (id: number) => {
+    setToasts(prev => prev.filter(t => t.id !== id));
+  };
 
   useEffect(() => {
     if (slideSpaceId) {
@@ -283,7 +326,7 @@ const EditorPage: React.FC = () => {
             setIsAuthenticated(true);
           },
           onAuthenticationFailed: () => {
-            alert('WebSocket 认证失败，请重新登录');
+            addToast('WebSocket authentication failed, please login again', 'error');
           },
           onAwarenessChange: ({ states }) => {
             const users = states
@@ -316,7 +359,7 @@ const EditorPage: React.FC = () => {
         }
       } catch (err) {
         console.error('[WebSocket] 初始化失败:', err);
-        alert('协同编辑连接失败: ' + (err instanceof Error ? err.message : '未知错误'));
+        addToast('Collaborative editing connection failed: ' + (err instanceof Error ? err.message : 'Unknown error'), 'error');
       }
     };
 
@@ -524,10 +567,13 @@ const EditorPage: React.FC = () => {
       });
       if (res.statusCode === 0) {
         setSlides([...slides, res.data]);
+        addToast('Document created successfully', 'success');
         navigate(`/slide/${slideSpaceId}/${res.data.id}`);
+      } else {
+        addToast(res.message || 'Failed to create document', 'error');
       }
     } catch (err) {
-      console.error(err);
+      addToast('Failed to create document', 'error');
     }
   };
 
@@ -652,6 +698,8 @@ const EditorPage: React.FC = () => {
           />
         </div>
       </div>
+
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
     </>
   );
 };

@@ -1,11 +1,42 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { Settings, Plus, Search, Filter, LayoutGrid, List, ArrowLeft, MoreVertical as MoreIcon, ChevronRight, ChevronDown, Share2, FolderOpen, FileText, Zap as ZapIcon } from 'lucide-react';
+import { Settings, Plus, Search, Filter, LayoutGrid, List, ArrowLeft, MoreVertical as MoreIcon, ChevronRight, ChevronDown, Share2, FolderOpen, FileText, Zap as ZapIcon, CheckCircle, AlertCircle, X } from 'lucide-react';
 import { spaceApi } from '../../api/space';
 import { slideApi } from '../../api/slide';
 import FileTree from '../../components/SpaceTree/FileTree';
 import { Slide, FileTreeNode, SlideSpace } from '../../types';
+
+// Toast 通知组件
+interface Toast {
+  id: number;
+  message: string;
+  type: 'success' | 'error';
+}
+
+const ToastContainer: React.FC<{ toasts: Toast[]; onRemove: (id: number) => void }> = ({ toasts, onRemove }) => {
+  useEffect(() => {
+    toasts.forEach(toast => {
+      setTimeout(() => onRemove(toast.id), 2000);
+    });
+  }, [toasts, onRemove]);
+
+  return (
+    <div className="fixed top-4 right-4 z-[100] space-y-2">
+      {toasts.map(toast => (
+        <div
+          key={toast.id}
+          className={`flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg animate-in fade-in slide-in-from-right duration-200 ${
+            toast.type === 'success' ? 'bg-green-500/90 text-white' : 'bg-red-500/90 text-white'
+          }`}
+        >
+          {toast.type === 'success' ? <CheckCircle className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
+          <span className="text-sm font-medium">{toast.message}</span>
+        </div>
+      ))}
+    </div>
+  );
+};
 
 const SpaceDetail: React.FC = () => {
   const { slideSpaceId } = useParams();
@@ -16,6 +47,16 @@ const SpaceDetail: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedNodes, setExpandedNodes] = useState<Record<number, boolean>>({});
   const [loading, setLoading] = useState(true);
+  const [toasts, setToasts] = useState<Toast[]>([]);
+
+  const addToast = (message: string, type: 'success' | 'error') => {
+    const id = Date.now();
+    setToasts(prev => [...prev, { id, message, type }]);
+  };
+
+  const removeToast = (id: number) => {
+    setToasts(prev => prev.filter(t => t.id !== id));
+  };
 
   useEffect(() => {
     if (slideSpaceId) {
@@ -73,10 +114,13 @@ const SpaceDetail: React.FC = () => {
       
       if (res.statusCode === 0) {
         setSlides([...slides, res.data]);
+        addToast('Document created successfully', 'success');
         navigate(`/slide/${slideSpaceId}/${res.data.id}`);
+      } else {
+        addToast(res.message || 'Failed to create document', 'error');
       }
     } catch (err) {
-      console.error(err);
+      addToast('Failed to create document', 'error');
     }
   };
 
@@ -274,6 +318,8 @@ const SpaceDetail: React.FC = () => {
         </div>
 
       </main>
+
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>
   );
 };
