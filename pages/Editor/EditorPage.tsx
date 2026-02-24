@@ -11,7 +11,8 @@ import {
   Sidebar as SidebarIcon,
   History,
   ArrowRight,
-  Zap
+  Zap,
+  AlertTriangle
 } from 'lucide-react';
 import { slideApi } from '../../api/slide';
 import { snippetApi } from '../../api/snippet';
@@ -136,6 +137,8 @@ const EditorPage: React.FC = () => {
   const [outlineHeight, setOutlineHeight] = useState(240);
   const [snippets, setSnippets] = useState<Snippet[]>([]);
   const [collaboratorModalOpen, setCollaboratorModalOpen] = useState(false);
+  const [permissionDeniedModalOpen, setPermissionDeniedModalOpen] = useState(false);
+  const [permissionCountdown, setPermissionCountdown] = useState(2);
 
   useEffect(() => {
     if (slideSpaceId) {
@@ -153,10 +156,27 @@ const EditorPage: React.FC = () => {
       slideApi.getCollaborators(Number(slideId)).then(res => {
         if (res.statusCode === 0) setCollaborators(res.data);
       });
-      // Get current user's role for this slide
+      // Get current user's role for this slide and check permissions
       slideApi.getMyRole(Number(slideId)).then(res => {
         if (res.statusCode === 0) {
-          setUserRole(res.data.role as SlideRole);
+          const role = res.data.role as SlideRole;
+          setUserRole(role);
+          
+          // Check if user has read permission
+          const canRead = PERMISSIONS[role]?.includes('read');
+          if (!canRead) {
+            setPermissionDeniedModalOpen(true);
+            // Countdown and redirect
+            let count = 2;
+            const timer = setInterval(() => {
+              count -= 1;
+              setPermissionCountdown(count);
+              if (count <= 0) {
+                clearInterval(timer);
+                navigate('/');
+              }
+            }, 1000);
+          }
         }
       });
     }
@@ -210,7 +230,7 @@ const EditorPage: React.FC = () => {
     initialContentRef.current = currentSlide?.content || '';
   }, [currentSlide?.id]);
   
-  // Fetch WebSocket connection info and initialize WebSocket
+  // Fetch WebSocket connection info and initialize WebSocket (only when there are collaborators)
   useEffect(() => {
     if (!slideId) return;
     
@@ -219,6 +239,18 @@ const EditorPage: React.FC = () => {
 
     const initWebSocket = async () => {
       try {
+        // Check if there are collaborators (excluding current user)
+        const collaboratorsRes = await slideApi.getCollaborators(Number(slideId));
+        const hasCollaborators = collaboratorsRes.statusCode === 0 && 
+          collaboratorsRes.data && 
+          collaboratorsRes.data.length > 0;
+
+        // If no collaborators, use local editing mode (no WebSocket)
+        if (!hasCollaborators) {
+          console.log('[Editor] No collaborators, using local editing mode');
+          return;
+        }
+
         const res = await slideApi.getConnectionInfo(Number(slideId));
         if (res.statusCode !== 0 || !res.data?.token) {
           throw new Error(res.message || '获取连接信息失败');
@@ -352,49 +384,56 @@ const EditorPage: React.FC = () => {
     ]),
   ], []);
 
+  // Initialize editor - supports both collaborative mode (with WebSocket) and local mode (without WebSocket)
   useEffect(() => {
     if (!editorContainerRef.current) return;
-    if (!yTextRef.current || !providerRef.current) return;
-    if (!isAuthenticated) return;
-
-    const yText = yTextRef.current;
-    const provider = providerRef.current;
-
-    // Get initial content from Yjs document or fallback to currentSlide content
-    let initialDoc = yText.toString() || "";
+    
+    // Determine mode: collaborative if WebSocket is initialized and authenticated
+    const isCollaborativeMode = yTextRef.current && providerRef.current && isAuthenticated;
+    
+    // Get initial content: from Yjs (collaborative) or currentSlide (local)
+    const initialDoc = isCollaborativeMode 
+      ? (yTextRef.current!.toString() || "")
+      : (currentSlide?.content || "");
 
     // Check if user has edit permission
     const canEdit = userRole ? PERMISSIONS[userRole]?.includes('edit') : false;
 
+    const extensions: any[] = [
+      EditorView.editable.of(canEdit),
+      ...manualBasicSetup,
+      markdown({ base: markdownLanguage, codeLanguages: languages }),
+      html(),
+      css(),
+      javascript(),
+      Prec.high(EditorState.languageData.of(() => [{
+        autocomplete: snippetCompletionSource
+      }])),
+      slidevDarkTheme,
+      syntaxHighlighting(slidevHighlightStyle),
+      EditorView.updateListener.of((update) => {
+        if (update.docChanged && update.view) {
+          try {
+            const newDocString = update.view.state.doc.toString();
+            if (newDocString !== undefined) {
+              setContent(newDocString);
+            }
+          } catch (err) {
+            console.warn("Failed to get doc string in update listener", err);
+          }
+        }
+      }),
+    ];
+
+    // Add collaborative extension only in collaborative mode
+    if (isCollaborativeMode) {
+      extensions.push(yCollab(yTextRef.current!, providerRef.current!.awareness));
+    }
+
     const view = new EditorView({
       state: EditorState.create({
         doc: initialDoc,
-        extensions: [
-          EditorView.editable.of(canEdit),
-          ...manualBasicSetup,
-          yCollab(yText, provider.awareness),
-          markdown({ base: markdownLanguage, codeLanguages: languages }),
-          html(),
-          css(),
-          javascript(),
-          Prec.high(EditorState.languageData.of(() => [{
-            autocomplete: snippetCompletionSource
-          }])),
-          slidevDarkTheme,
-          syntaxHighlighting(slidevHighlightStyle),
-          EditorView.updateListener.of((update) => {
-            if (update.docChanged && update.view) {
-              try {
-                const newDocString = update.view.state.doc.toString();
-                if (newDocString !== undefined) {
-                  setContent(newDocString);
-                }
-              } catch (err) {
-                console.warn("Failed to get doc string in update listener", err);
-              }
-            }
-          }),
-        ],
+        extensions,
       }),
       parent: editorContainerRef.current,
     });
@@ -404,7 +443,7 @@ const EditorPage: React.FC = () => {
     return () => {
       view.destroy();
     };
-  }, [slideId, manualBasicSetup, snippetCompletionSource, isAuthenticated, userRole]);
+  }, [slideId, manualBasicSetup, snippetCompletionSource, isAuthenticated, userRole, currentSlide?.content]);
 
   const handleSave = useCallback(async () => {
     if (!slideId) return;
@@ -516,84 +555,104 @@ const EditorPage: React.FC = () => {
   );
 
   return (
-    <div className="flex h-screen w-screen bg-[#09090b] text-white overflow-hidden select-none font-sans">
-      <EditorSidebar 
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        sidebarOpen={sidebarOpen}
-        setSidebarOpen={setSidebarOpen}
-        slides={slides}
-        slideSpaceId={slideSpaceId}
-        onUpdateSlides={setSlides}
-        onAddSlide={handleAddSlide}
-        snippets={snippets}
-        onInsertSnippet={insertSnippet}
-        chatHistory={chatHistory}
-        chatInput={chatInput}
-        setChatInput={setChatInput}
-        onSendChat={handleAiChat}
-        slideId={slideId}
-        currentUser={currentUser}
-        onVersionRollback={(rolledBackContent) => {
-          setContent(rolledBackContent);
-          // Update editor content
-          if (editorViewRef.current) {
-            const view = editorViewRef.current;
-            view.dispatch({
-              changes: { from: 0, to: view.state.doc.length, insert: rolledBackContent }
-            });
-          }
-        }}
-      />
-      <div className="flex-1 flex flex-col min-w-0">
-        <EditorHeader 
-          currentSlide={currentSlide}
-          collaborators={collaborators}
-          onlineUsers={onlineUsers}
-          isSaving={isSaving}
-          onSave={handleSave}
-          previewOpen={previewOpen}
-          onTogglePreview={() => setPreviewOpen(!previewOpen)}
+    <>
+      {/* Permission Denied Modal */}
+      {permissionDeniedModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm">
+          <div className="relative w-[400px] bg-[#1c1c1f] border border-red-500/30 rounded-2xl shadow-2xl p-6">
+            <div className="flex flex-col items-center text-center">
+              <div className="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center mb-4">
+                <AlertTriangle className="w-8 h-8 text-red-400" />
+              </div>
+              <h3 className="text-lg font-semibold text-white mb-2">访问被拒绝</h3>
+              <p className="text-sm text-white/60 mb-4">您没有权限访问此幻灯片</p>
+              <div className="text-xs text-white/40">
+                {permissionCountdown} 秒后返回主页...
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      <div className="flex h-screen w-screen bg-[#09090b] text-white overflow-hidden select-none font-sans">
+        <EditorSidebar 
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          sidebarOpen={sidebarOpen}
+          setSidebarOpen={setSidebarOpen}
+          slides={slides}
+          slideSpaceId={slideSpaceId}
+          onUpdateSlides={setSlides}
+          onAddSlide={handleAddSlide}
+          snippets={snippets}
+          onInsertSnippet={insertSnippet}
+          chatHistory={chatHistory}
+          chatInput={chatInput}
+          setChatInput={setChatInput}
+          onSendChat={handleAiChat}
           slideId={slideId}
-          onOpenCollaboratorModal={() => setCollaboratorModalOpen(true)}
-          onSlideUpdate={(updatedSlide) => setCurrentSlide(updatedSlide)}
-        />
-        <CollaboratorModal
-          isOpen={collaboratorModalOpen}
-          onClose={() => setCollaboratorModalOpen(false)}
-          slideId={Number(slideId)}
           currentUser={currentUser}
+          onVersionRollback={(rolledBackContent) => {
+            setContent(rolledBackContent);
+            // Update editor content
+            if (editorViewRef.current) {
+              const view = editorViewRef.current;
+              view.dispatch({
+                changes: { from: 0, to: view.state.doc.length, insert: rolledBackContent }
+              });
+            }
+          }}
         />
-        <ResizableLayout 
-          left={null}
-          center={editorCenter}
-          leftOpen={false}
-          rightOpen={previewOpen}
-          right={
-            <EditorPreview 
-              previewMode={previewMode}
-              setPreviewMode={setPreviewMode}
-              content={content}
-              outlineHeight={outlineHeight}
-              onOutlineResize={(e) => {
-                e.preventDefault();
-                const startY = e.clientY;
-                const startH = outlineHeight;
-                const move = (me: MouseEvent) => setOutlineHeight(Math.max(100, Math.min(600, startH + (startY - me.clientY))));
-                const up = () => { window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', up); };
-                window.addEventListener('mousemove', move);
-                window.addEventListener('mouseup', up);
-              }}
-              slidePages={slidePages}
-              onJumpToSlide={jumpToSlide}
-              onScrollOutline={dir => outlineScrollRef.current?.scrollBy({ top: dir === 'top' ? -100 : 100, behavior: 'smooth' })}
-              outlineScrollRef={outlineScrollRef}
-              slideId={slideId}
-            />
-          }
-        />
+        <div className="flex-1 flex flex-col min-w-0">
+          <EditorHeader 
+            currentSlide={currentSlide}
+            collaborators={collaborators}
+            onlineUsers={onlineUsers}
+            isSaving={isSaving}
+            onSave={handleSave}
+            previewOpen={previewOpen}
+            onTogglePreview={() => setPreviewOpen(!previewOpen)}
+            slideId={slideId}
+            onOpenCollaboratorModal={() => setCollaboratorModalOpen(true)}
+            onSlideUpdate={(updatedSlide) => setCurrentSlide(updatedSlide)}
+          />
+          <CollaboratorModal
+            isOpen={collaboratorModalOpen}
+            onClose={() => setCollaboratorModalOpen(false)}
+            slideId={Number(slideId)}
+            currentUser={currentUser}
+          />
+          <ResizableLayout 
+            left={null}
+            center={editorCenter}
+            leftOpen={false}
+            rightOpen={previewOpen}
+            right={
+              <EditorPreview 
+                previewMode={previewMode}
+                setPreviewMode={setPreviewMode}
+                content={content}
+                outlineHeight={outlineHeight}
+                onOutlineResize={(e) => {
+                  e.preventDefault();
+                  const startY = e.clientY;
+                  const startH = outlineHeight;
+                  const move = (me: MouseEvent) => setOutlineHeight(Math.max(100, Math.min(600, startH + (startY - me.clientY))));
+                  const up = () => { window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', up); };
+                  window.addEventListener('mousemove', move);
+                  window.addEventListener('mouseup', up);
+                }}
+                slidePages={slidePages}
+                onJumpToSlide={jumpToSlide}
+                onScrollOutline={dir => outlineScrollRef.current?.scrollBy({ top: dir === 'top' ? -100 : 100, behavior: 'smooth' })}
+                outlineScrollRef={outlineScrollRef}
+                slideId={slideId}
+              />
+            }
+          />
+        </div>
       </div>
-    </div>
+    </>
   );
 };
 
