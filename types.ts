@@ -20,6 +20,7 @@ export interface Slide {
   createdAt: string;
   updatedAt: string;
   isBuild?: boolean;
+  previewUrl?: string;
 }
 
 export interface SlideSpace {

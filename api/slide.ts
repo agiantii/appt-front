@@ -6,7 +6,7 @@ export const slideApi = {
     api.post<any, ApiResponse<Slide>>('/slides', data),
   findAllBySpace: (spaceId: number) => 
     api.get<any, ApiResponse<any[]>>(`/slide-spaces/${spaceId}/slides`),
-  update: (id: number, data: { title?: string; content?: string; isPublic?: boolean; allowComment?: boolean }) => 
+  update: (id: number, data: { title?: string; content?: string; isPublic?: boolean; allowComment?: boolean; previewUrl?: string }) => 
     api.put<any, ApiResponse<Slide>>(`/slides/${id}`, data),
   remove: (id: number) => 
     api.delete<any, ApiResponse<null>>(`/slides/${id}`),

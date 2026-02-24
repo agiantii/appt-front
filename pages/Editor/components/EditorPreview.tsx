@@ -1,8 +1,10 @@
 
-import React, { useEffect, useState, useRef } from 'react';
-import { Maximize, Minimize, RefreshCw, ArrowUp, ArrowDown, Loader2, Square, Hammer, CheckCircle2 } from 'lucide-react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
+import { Maximize, Minimize, RefreshCw, ArrowUp, ArrowDown, Loader2, Square, Hammer, CheckCircle2, Camera, Upload, X, ImageIcon } from 'lucide-react';
+import { Modal } from '../../../components/Common/Modal';
 import { SlidePageInfo } from '../../../types';
 import { slideApi } from '../../../api/slide';
+import { uploadApi } from '../../../api/upload';
 
 interface EditorPreviewProps {
   previewMode: 'dev' | 'build';
@@ -30,7 +32,9 @@ const EditorPreview: React.FC<EditorPreviewProps> = ({
   const [buildPath, setBuildPath] = useState<string | null>(null);
   const [toast, setToast] = useState<{ show: boolean; message: string; type: 'success' | 'error' } | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isCapturing, setIsCapturing] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const iframeWrapperRef = useRef<HTMLDivElement>(null);
 
   const getIframeSrc = () => {
     if (previewMode === 'build' && buildPath) {
@@ -142,6 +146,84 @@ const EditorPreview: React.FC<EditorPreviewProps> = ({
     }
   };
 
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [uploadPreview, setUploadPreview] = useState<string | null>(null);
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleCapture = () => {
+    setIsUploadModalOpen(true);
+  };
+
+  const handleFileSelect = (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      showToast('请选择图片文件', 'error');
+      return;
+    }
+    setUploadFile(file);
+    const reader = new FileReader();
+    reader.onload = (e) => setUploadPreview(e.target?.result as string);
+    reader.readAsDataURL(file);
+  };
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    const file = e.dataTransfer.files[0];
+    if (file) handleFileSelect(file);
+  }, []);
+
+  const handlePaste = useCallback((e: ClipboardEvent) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (const item of items) {
+      if (item.type.startsWith('image/')) {
+        const file = item.getAsFile();
+        if (file) handleFileSelect(file);
+        break;
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isUploadModalOpen) {
+      document.addEventListener('paste', handlePaste);
+      return () => document.removeEventListener('paste', handlePaste);
+  }
+  }, [isUploadModalOpen, handlePaste]);
+
+  const handleUpload = async () => {
+    if (!uploadFile || !slideId) return;
+    setIsUploading(true);
+    try {
+      const uploadRes = await uploadApi.uploadImage(uploadFile);
+      if (uploadRes.statusCode === 0 && uploadRes.data?.url) {
+        const updateRes = await slideApi.update(Number(slideId), { previewUrl: uploadRes.data.url });
+        if (updateRes.statusCode === 0) {
+          showToast('上传成功', 'success');
+          setIsUploadModalOpen(false);
+          setUploadPreview(null);
+          setUploadFile(null);
+        } else {
+          showToast('更新失败', 'error');
+        }
+      } else {
+        showToast('上传失败', 'error');
+      }
+    } catch (err) {
+      console.error('上传失败:', err);
+      showToast('上传失败', 'error');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const closeUploadModal = () => {
+    setIsUploadModalOpen(false);
+    setUploadPreview(null);
+    setUploadFile(null);
+  };
+
   return (
     <div className="flex flex-col h-full min-w-0">
       <div className="h-10 border-b border-white/5 flex items-center justify-between px-4 bg-[#09090b]">
@@ -182,6 +264,14 @@ const EditorPreview: React.FC<EditorPreviewProps> = ({
             <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
           </button>
           <button 
+            onClick={handleCapture}
+            disabled={isCapturing || !previewUrl}
+            className="p-1.5 hover:bg-white/5 rounded-lg text-white/40 hover:text-white transition-all disabled:opacity-50" 
+            title="Capture"
+          >
+            <Camera className={`w-3.5 h-3.5 ${isCapturing ? 'animate-pulse' : ''}`} />
+          </button>
+          <button 
             onClick={toggleFullscreen}
             className="p-1.5 hover:bg-white/5 rounded-lg text-white/40 hover:text-white transition-all" 
             title={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
@@ -191,7 +281,7 @@ const EditorPreview: React.FC<EditorPreviewProps> = ({
         </div>
       </div>
       
-      <div className="flex-1 bg-[#121214] overflow-hidden flex items-center justify-center relative">
+      <div ref={iframeWrapperRef} className="flex-1 bg-[#121214] overflow-hidden flex items-center justify-center relative">
         {isLoading ? (
           <div className="flex flex-col items-center gap-3 text-white/40">
             <Loader2 className="w-8 h-8 animate-spin" />
@@ -231,6 +321,67 @@ const EditorPreview: React.FC<EditorPreviewProps> = ({
           </div>
         </div>
       )}
+
+      {/* 图片上传弹框 */}
+      <Modal
+        isOpen={isUploadModalOpen}
+        onClose={closeUploadModal}
+        title="上传预览图片"
+        size="md"
+        footer={
+          <>
+            <button
+              onClick={closeUploadModal}
+              className="px-4 py-2 text-xs font-medium text-white/60 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
+            >
+              取消
+            </button>
+            <button
+              onClick={handleUpload}
+              disabled={!uploadFile || isUploading}
+              className="px-4 py-2 text-xs font-medium bg-white text-black hover:bg-white/90 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {isUploading ? '上传中...' : '确认'}
+            </button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => e.target.files?.[0] && handleFileSelect(e.target.files[0])}
+          />
+          {uploadPreview ? (
+            <div className="relative">
+              <img src={uploadPreview} alt="Preview" className="w-full h-48 object-contain rounded-lg bg-[#0c0c0e]" />
+              <button
+                onClick={() => { setUploadPreview(null); setUploadFile(null); }}
+                className="absolute top-2 right-2 p-1 bg-black/60 hover:bg-black/80 rounded-lg text-white/80 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          ) : (
+            <div
+              onDrop={handleDrop}
+              onDragOver={(e) => e.preventDefault()}
+              onClick={() => fileInputRef.current?.click()}
+              className="h-48 border-2 border-dashed border-white/10 hover:border-white/30 rounded-lg flex flex-col items-center justify-center gap-3 cursor-pointer transition-colors"
+            >
+              <div className="p-3 bg-white/5 rounded-full">
+                <ImageIcon className="w-8 h-8 text-white/40" />
+              </div>
+              <div className="text-center">
+                <p className="text-sm text-white/60">点击选择图片或拖拽到此处</p>
+                <p className="text-xs text-white/30 mt-1">支持 Ctrl+V 粘贴图片</p>
+              </div>
+            </div>
+          )}
+        </div>
+      </Modal>
 
       <div 
         onMouseDown={onOutlineResize}

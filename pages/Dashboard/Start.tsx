@@ -321,9 +321,17 @@ const StartPage: React.FC = () => {
               className="bg-[#0c0c0e] border border-white/5 p-6 rounded-[32px] hover:border-white/20 transition-all group flex flex-col shadow-lg"
             >
               <div className="aspect-video bg-[#18181b] rounded-2xl mb-6 overflow-hidden flex items-center justify-center relative">
-                <div className="p-6 text-[8px] text-white/5 font-mono opacity-50 select-none group-hover:scale-110 transition-transform duration-700">
-                  {slide.title}
-                </div>
+                {slide.previewUrl ? (
+                  <img 
+                    src={slide.previewUrl} 
+                    alt={slide.title}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  />
+                ) : (
+                  <div className="p-6 text-[8px] text-white/5 font-mono opacity-50 select-none group-hover:scale-110 transition-transform duration-700">
+                    {slide.title}
+                  </div>
+                )}
                 <div className="absolute inset-0 bg-gradient-to-t from-[#0c0c0e] via-transparent to-transparent opacity-60" />
                 <Zap className="absolute bottom-4 right-4 w-6 h-6 text-white/5 group-hover:text-white/40 transition-all group-hover:rotate-12" />
               </div>
@@ -332,11 +340,6 @@ const StartPage: React.FC = () => {
                 <span className="text-[10px] font-bold text-white/20 uppercase tracking-widest">
                   Edited {new Date(slide.updatedAt).toLocaleDateString()}
                 </span>
-                <div className="flex -space-x-2">
-                   {[1,2].map(i => (
-                     <img key={i} src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${slide.id + i}`} className="w-6 h-6 rounded-full border-2 border-[#0c0c0e]" />
-                   ))}
-                </div>
               </div>
             </Link>
           ))}
