@@ -354,7 +354,7 @@ const EditorPage: React.FC = () => {
     const provider = providerRef.current;
 
     // Get initial content from Yjs document or fallback to currentSlide content
-    let initialDoc = yText.toString() || initialContentRef.current || "";
+    let initialDoc = yText.toString() || "";
 
     // Check if user has edit permission
     const canEdit = userRole ? PERMISSIONS[userRole]?.includes('edit') : false;
