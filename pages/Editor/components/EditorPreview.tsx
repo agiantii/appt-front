@@ -1,6 +1,6 @@
 
-import React, { useEffect, useState } from 'react';
-import { Maximize, RefreshCw, ArrowUp, ArrowDown, Loader2, Square, Hammer, CheckCircle2 } from 'lucide-react';
+import React, { useEffect, useState, useRef } from 'react';
+import { Maximize, Minimize, RefreshCw, ArrowUp, ArrowDown, Loader2, Square, Hammer, CheckCircle2 } from 'lucide-react';
 import { SlidePageInfo } from '../../../types';
 import { slideApi } from '../../../api/slide';
 
@@ -29,6 +29,8 @@ const EditorPreview: React.FC<EditorPreviewProps> = ({
   const [isStopping, setIsStopping] = useState(false);
   const [buildPath, setBuildPath] = useState<string | null>(null);
   const [toast, setToast] = useState<{ show: boolean; message: string; type: 'success' | 'error' } | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const getIframeSrc = () => {
     if (previewMode === 'build' && buildPath) {
@@ -118,6 +120,28 @@ const EditorPreview: React.FC<EditorPreviewProps> = ({
     fetchPreview();
   }, [slideId, previewMode]);
 
+  // 监听全屏状态变化
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
+
+  const toggleFullscreen = async () => {
+    if (!iframeRef.current) return;
+    try {
+      if (!document.fullscreenElement) {
+        await iframeRef.current.requestFullscreen();
+      } else {
+        await document.exitFullscreen();
+      }
+    } catch (err) {
+      console.error('全屏切换失败:', err);
+    }
+  };
+
   return (
     <div className="flex flex-col h-full min-w-0">
       <div className="h-10 border-b border-white/5 flex items-center justify-between px-4 bg-[#09090b]">
@@ -157,8 +181,12 @@ const EditorPreview: React.FC<EditorPreviewProps> = ({
           <button onClick={fetchPreview} className="p-1.5 hover:bg-white/5 rounded-lg text-white/40 hover:text-white transition-all" title="Refresh">
             <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
           </button>
-          <button className="p-1.5 hover:bg-white/5 rounded-lg text-white/40 hover:text-white transition-all" title="Fullscreen">
-            <Maximize className="w-3.5 h-3.5" />
+          <button 
+            onClick={toggleFullscreen}
+            className="p-1.5 hover:bg-white/5 rounded-lg text-white/40 hover:text-white transition-all" 
+            title={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
+          >
+            {isFullscreen ? <Minimize className="w-3.5 h-3.5" /> : <Maximize className="w-3.5 h-3.5" />}
           </button>
         </div>
       </div>
@@ -178,9 +206,10 @@ const EditorPreview: React.FC<EditorPreviewProps> = ({
           </div>
         ) : previewUrl ? (
           <iframe
+            ref={iframeRef}
             key={currentPage}
             src={getIframeSrc()}
-            className="w-full h-full border-0"
+            className="w-full h-full border-0 bg-[#121214]"
             title="Slide Preview"
             sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
           />
