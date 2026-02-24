@@ -556,6 +556,7 @@ const EditorPage: React.FC = () => {
           onTogglePreview={() => setPreviewOpen(!previewOpen)}
           slideId={slideId}
           onOpenCollaboratorModal={() => setCollaboratorModalOpen(true)}
+          onSlideUpdate={(updatedSlide) => setCurrentSlide(updatedSlide)}
         />
         <CollaboratorModal
           isOpen={collaboratorModalOpen}
