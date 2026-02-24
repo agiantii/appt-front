@@ -7,6 +7,7 @@ import { Slide, User } from '../../../types';
 interface EditorHeaderProps {
   currentSlide: Slide | null;
   collaborators: User[];
+  onlineUsers: {name: string; color: string}[];
   isSaving: boolean;
   onSave: () => void;
   previewOpen: boolean;
@@ -18,6 +19,7 @@ interface EditorHeaderProps {
 const EditorHeader: React.FC<EditorHeaderProps> = ({ 
   currentSlide, 
   collaborators, 
+  onlineUsers,
   isSaving, 
   onSave, 
   previewOpen, 
@@ -35,12 +37,19 @@ const EditorHeader: React.FC<EditorHeaderProps> = ({
         <div className="h-6 w-px bg-white/5" />
         <div className="flex items-center gap-4">
           <div className="flex -space-x-3">
-            {collaborators.map(c => (
+            {onlineUsers.map((user, index) => (
+              <div 
+                key={index} 
+                className="w-8 h-8 rounded-full border-4 border-[#09090b] shadow-2xl flex items-center justify-center text-[10px] font-bold text-white transition-transform hover:-translate-y-1 cursor-pointer"
+                style={{ backgroundColor: user.color }}
+                title={user.name}
+              >
+                {user.name.charAt(0).toUpperCase()}
+              </div>
+            ))}
+            {onlineUsers.length === 0 && collaborators.slice(0, 3).map(c => (
               <img key={c.id} src={c.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${c.username}`} className="w-8 h-8 rounded-full border-4 border-[#09090b] shadow-2xl transition-transform hover:-translate-y-1 cursor-pointer" title={c.username} />
             ))}
-            <div className="w-8 h-8 rounded-full bg-[#18181b] border-4 border-[#09090b] flex items-center justify-center text-[10px] font-black text-white/20 hover:text-white transition-all cursor-pointer">
-              +3
-            </div>
           </div>
           <button 
             onClick={onOpenCollaboratorModal}

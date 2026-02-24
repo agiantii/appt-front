@@ -204,6 +204,7 @@ const EditorPage: React.FC = () => {
   const [connectionInfo, setConnectionInfo] = useState<ConnectionInfo | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userRole, setUserRole] = useState<SlideRole | null>(null);
+  const [onlineUsers, setOnlineUsers] = useState<{name: string; color: string}[]>([]);
   
   useEffect(() => {
     initialContentRef.current = currentSlide?.content || '';
@@ -251,6 +252,12 @@ const EditorPage: React.FC = () => {
           },
           onAuthenticationFailed: () => {
             alert('WebSocket 认证失败，请重新登录');
+          },
+          onAwarenessChange: ({ states }) => {
+            const users = states
+              .filter((state: any) => state.user)
+              .map((state: any) => state.user);
+            setOnlineUsers(users);
           },
         });
 
@@ -542,6 +549,7 @@ const EditorPage: React.FC = () => {
         <EditorHeader 
           currentSlide={currentSlide}
           collaborators={collaborators}
+          onlineUsers={onlineUsers}
           isSaving={isSaving}
           onSave={handleSave}
           previewOpen={previewOpen}
