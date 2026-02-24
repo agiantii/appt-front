@@ -18,6 +18,7 @@ import { snippetApi } from '../../api/snippet';
 import { userApi } from '../../api/user';
 import { versionApi } from '../../api/version';
 import { SidebarTab, Slide, Snippet, User, ConnectionInfo } from '../../types';
+import { PERMISSIONS, SlideRole } from '../../constant/permissions';
 import ResizableLayout from '../../components/Editor/ResizablePanels';
 import { GoogleGenAI } from '@google/genai';
 
@@ -152,6 +153,12 @@ const EditorPage: React.FC = () => {
       slideApi.getCollaborators(Number(slideId)).then(res => {
         if (res.statusCode === 0) setCollaborators(res.data);
       });
+      // Get current user's role for this slide
+      slideApi.getMyRole(Number(slideId)).then(res => {
+        if (res.statusCode === 0) {
+          setUserRole(res.data.role as SlideRole);
+        }
+      });
     }
     snippetApi.findAll().then(res => {
       if (res.statusCode === 0) setSnippets(res.data);
@@ -196,6 +203,7 @@ const EditorPage: React.FC = () => {
   const initialContentRef = useRef<string>('');
   const [connectionInfo, setConnectionInfo] = useState<ConnectionInfo | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [userRole, setUserRole] = useState<SlideRole | null>(null);
   
   useEffect(() => {
     initialContentRef.current = currentSlide?.content || '';
@@ -348,10 +356,14 @@ const EditorPage: React.FC = () => {
     // Get initial content from Yjs document or fallback to currentSlide content
     let initialDoc = yText.toString() || initialContentRef.current || "";
 
+    // Check if user has edit permission
+    const canEdit = userRole ? PERMISSIONS[userRole]?.includes('edit') : false;
+
     const view = new EditorView({
       state: EditorState.create({
         doc: initialDoc,
         extensions: [
+          EditorView.editable.of(canEdit),
           ...manualBasicSetup,
           yCollab(yText, provider.awareness),
           markdown({ base: markdownLanguage, codeLanguages: languages }),
@@ -385,7 +397,7 @@ const EditorPage: React.FC = () => {
     return () => {
       view.destroy();
     };
-  }, [slideId, manualBasicSetup, snippetCompletionSource, isAuthenticated]);
+  }, [slideId, manualBasicSetup, snippetCompletionSource, isAuthenticated, userRole]);
 
   const handleSave = useCallback(async () => {
     if (!slideId) return;
