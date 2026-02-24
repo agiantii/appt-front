@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { Maximize, RefreshCw, ArrowUp, ArrowDown, Loader2 } from 'lucide-react';
+import { Maximize, RefreshCw, ArrowUp, ArrowDown, Loader2, Square, Hammer, CheckCircle2 } from 'lucide-react';
 import { SlidePageInfo } from '../../../types';
 import { slideApi } from '../../../api/slide';
 
@@ -25,9 +25,19 @@ const EditorPreview: React.FC<EditorPreviewProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [isBuilding, setIsBuilding] = useState(false);
+  const [isStopping, setIsStopping] = useState(false);
+  const [buildPath, setBuildPath] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ show: boolean; message: string; type: 'success' | 'error' } | null>(null);
 
   const getIframeSrc = () => {
+    if (previewMode === 'build' && buildPath) {
+      // build 模式使用 buildPath
+      console.log('buildPath', buildPath)
+      return `${buildPath}${currentPage}`;
+    }
     if (!previewUrl) return '';
+    // dev 模式使用 previewUrl
     const baseUrl = previewUrl.split('#')[0];
     return `${baseUrl}/${currentPage}`;
   };
@@ -55,7 +65,56 @@ const EditorPreview: React.FC<EditorPreviewProps> = ({
     }
   };
 
+  const handleStopDev = async () => {
+    if (!slideId) return;
+    setIsStopping(true);
+    try {
+      const res = await slideApi.stopDev(Number(slideId));
+      if (res.statusCode === 0) {
+        setPreviewUrl(null);
+        setError('Dev server stopped');
+      }
+    } catch (err) {
+      console.error('停止 Dev 服务失败:', err);
+    } finally {
+      setIsStopping(false);
+    }
+  };
+
+  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+    setToast({ show: true, message, type });
+    setTimeout(() => {
+      setToast(null);
+    }, 2000);
+  };
+
+  const handleBuild = async () => {
+    if (!slideId) return;
+    setIsBuilding(true);
+    try {
+      const res = await slideApi.build(Number(slideId));
+      if (res.statusCode === 0 && res.data?.buildPath) {
+        // 构建完成后切换到 build 模式并使用 buildPath
+        setBuildPath(res.data.buildPath);
+        setPreviewMode('build');
+        setPreviewUrl(null);
+        showToast('构建成功', 'success');
+      } else {
+        showToast('构建失败', 'error');
+      }
+    } catch (err) {
+      console.error('构建失败:', err);
+      showToast('构建失败', 'error');
+    } finally {
+      setIsBuilding(false);
+    }
+  };
+
   useEffect(() => {
+    if (previewMode === 'build' && buildPath) {
+      // build 模式且已有 buildPath，不需要重新获取
+      return;
+    }
     fetchPreview();
   }, [slideId, previewMode]);
 
@@ -73,7 +132,28 @@ const EditorPreview: React.FC<EditorPreviewProps> = ({
             </button>
           ))}
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
+          {previewMode === 'dev' && (
+            <button 
+              onClick={handleStopDev} 
+              disabled={isStopping}
+              className="flex items-center gap-1.5 px-3 py-1.5 hover:bg-red-500/10 rounded-lg text-white/40 hover:text-red-400 transition-all disabled:opacity-50"
+              title="Stop Dev Server"
+            >
+              <Square className={`w-3.5 h-3.5 ${isStopping ? 'animate-pulse' : ''}`} />
+              <span className="text-[10px] font-bold uppercase">Stop</span>
+            </button>
+          )}
+          <button 
+            onClick={handleBuild} 
+            disabled={isBuilding}
+            className="flex items-center gap-1.5 px-3 py-1.5 hover:bg-white/5 rounded-lg text-white/40 hover:text-white transition-all disabled:opacity-50"
+            title="Build"
+          >
+            <Hammer className={`w-3.5 h-3.5 ${isBuilding ? 'animate-pulse' : ''}`} />
+            <span className="text-[10px] font-bold uppercase">Build</span>
+          </button>
+          <div className="w-px h-4 bg-white/10 mx-1" />
           <button onClick={fetchPreview} className="p-1.5 hover:bg-white/5 rounded-lg text-white/40 hover:text-white transition-all" title="Refresh">
             <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
           </button>
@@ -108,6 +188,20 @@ const EditorPreview: React.FC<EditorPreviewProps> = ({
           <div className="text-white/30 text-sm">No preview available</div>
         )}
       </div>
+
+      {/* Toast 提示 */}
+      {toast?.show && (
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border shadow-lg ${
+            toast.type === 'success' 
+              ? 'bg-[#09090b] border-green-500/30 text-green-400' 
+              : 'bg-[#09090b] border-red-500/30 text-red-400'
+          }`}>
+            <CheckCircle2 className="w-4 h-4" />
+            <span className="text-sm font-medium">{toast.message}</span>
+          </div>
+        </div>
+      )}
 
       <div 
         onMouseDown={onOutlineResize}
