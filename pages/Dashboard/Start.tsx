@@ -1,16 +1,171 @@
 
-import React, { useEffect, useState } from 'react';
-import { Plus, Clock, Star, Users, ArrowRight, BookOpen, Box, Zap, Sparkles } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import React, { useEffect, useState, useRef } from 'react';
+import { Plus, Clock, Star, Users, ArrowRight, BookOpen, Box, Zap, Sparkles, Search, ChevronDown, X } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
 import { slideApi } from '../../api/slide';
 import { spaceApi } from '../../api/space';
 import { userApi } from '../../api/user';
 import { Slide, SlideSpace, User } from '../../types';
 
+interface CreateSlideModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  spaces: SlideSpace[];
+  onCreate: (spaceId: number, title: string) => void;
+}
+
+const CreateSlideModal: React.FC<CreateSlideModalProps> = ({ isOpen, onClose, spaces, onCreate }) => {
+  const [selectedSpace, setSelectedSpace] = useState<SlideSpace | null>(null);
+  const [slideTitle, setSlideTitle] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      setSelectedSpace(null);
+      setSlideTitle('');
+      setSearchQuery('');
+      setIsDropdownOpen(false);
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const filteredSpaces = spaces.filter(space =>
+    space.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const handleCreate = () => {
+    if (selectedSpace && slideTitle.trim()) {
+      onCreate(selectedSpace.id, slideTitle.trim());
+      onClose();
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative w-[480px] bg-[#1c1c1f] border border-white/10 rounded-2xl shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-white/5">
+          <h3 className="text-sm font-semibold text-white/90">Create New Slide</h3>
+          <button onClick={onClose} className="p-1.5 hover:bg-white/10 rounded-lg text-white/40 hover:text-white transition-colors">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        <div className="px-5 py-5 space-y-4">
+          {/* Knowledge Base Selector */}
+          <div className="space-y-2">
+            <label className="text-xs font-medium text-white/50 uppercase tracking-wider">Knowledge Base</label>
+            <div className="relative" ref={dropdownRef}>
+              <button
+                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                className="w-full flex items-center justify-between bg-[#0c0c0e] border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white/90 hover:border-white/20 transition-colors"
+              >
+                <span className={selectedSpace ? 'text-white/90' : 'text-white/30'}>
+                  {selectedSpace ? selectedSpace.name : 'Select a knowledge base...'}
+                </span>
+                <ChevronDown className={`w-4 h-4 text-white/40 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
+              </button>
+              
+              {isDropdownOpen && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-[#0c0c0e] border border-white/10 rounded-lg shadow-2xl z-50 overflow-hidden">
+                  <div className="p-2 border-b border-white/5">
+                    <div className="relative">
+                      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+                      <input
+                        type="text"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder="Search knowledge bases..."
+                        className="w-full bg-[#1c1c1f] border border-white/10 rounded-md pl-9 pr-3 py-1.5 text-xs text-white/90 placeholder:text-white/30 focus:outline-none focus:border-white/30"
+                        autoFocus
+                      />
+                    </div>
+                  </div>
+                  <div className="max-h-48 overflow-y-auto py-1">
+                    {filteredSpaces.length > 0 ? (
+                      filteredSpaces.map(space => (
+                        <button
+                          key={space.id}
+                          onClick={() => {
+                            setSelectedSpace(space);
+                            setIsDropdownOpen(false);
+                            setSearchQuery('');
+                          }}
+                          className={`w-full text-left px-3 py-2 text-xs transition-colors ${
+                            selectedSpace?.id === space.id
+                              ? 'bg-white/10 text-white'
+                              : 'text-white/70 hover:bg-white/5 hover:text-white'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <BookOpen className="w-3.5 h-3.5 text-white/40" />
+                            <span className="truncate">{space.name}</span>
+                          </div>
+                        </button>
+                      ))
+                    ) : (
+                      <div className="px-3 py-4 text-center text-xs text-white/30">
+                        No knowledge bases found
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Slide Title Input */}
+          <div className="space-y-2">
+            <label className="text-xs font-medium text-white/50 uppercase tracking-wider">Slide Title</label>
+            <input
+              type="text"
+              value={slideTitle}
+              onChange={(e) => setSlideTitle(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
+              placeholder="Enter slide title..."
+              className="w-full bg-[#0c0c0e] border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white/90 placeholder:text-white/30 focus:outline-none focus:border-white/30 focus:ring-1 focus:ring-white/10"
+              autoFocus={!!selectedSpace}
+            />
+          </div>
+        </div>
+        <div className="flex items-center justify-end gap-3 px-5 py-4 border-t border-white/5">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-xs font-medium text-white/60 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleCreate}
+            disabled={!selectedSpace || !slideTitle.trim()}
+            className="px-4 py-2 text-xs font-medium bg-white text-black hover:bg-white/90 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            Create Slide
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const StartPage: React.FC = () => {
+  const navigate = useNavigate();
   const [recentSlides, setRecentSlides] = useState<any[]>([]);
   const [spaces, setSpaces] = useState<SlideSpace[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   useEffect(() => {
     userApi.getCurrentUser().then(res => {
@@ -19,10 +174,28 @@ const StartPage: React.FC = () => {
     slideApi.findRecent(3).then(res => {
       if (res.statusCode === 0) setRecentSlides(res.data);
     });
-    spaceApi.findAll({ pageSize: 4 }).then(res => {
+    spaceApi.findAll({ pageSize: 100 }).then(res => {
       if (res.statusCode === 0) setSpaces(res.data.items);
     });
   }, []);
+
+  const handleCreateSlide = async (spaceId: number, title: string) => {
+    try {
+      const res = await slideApi.create({
+        title,
+        slideSpaceId: Number(spaceId),
+        parentId: null,
+        content: '---\ntheme: default\n---\n# ' + title + '\nStart typing...',
+        isPublic: false,
+        allowComment: true
+      });
+      if (res.statusCode === 0) {
+        navigate(`/slide/${spaceId}/${res.data.id}`);
+      }
+    } catch (err) {
+      console.error('Failed to create slide:', err);
+    }
+  };
 
   return (
     <div className="max-w-7xl mx-auto p-12 space-y-16 animate-in fade-in slide-in-from-bottom-8 duration-1000">
@@ -31,11 +204,21 @@ const StartPage: React.FC = () => {
           <h1 className="text-5xl font-black tracking-tightest">Workdesk</h1>
           <p className="text-white/30 text-xl font-medium">Welcome back, {currentUser?.username || 'User'}. Your workspace is ready.</p>
         </div>
-        <button className="flex items-center gap-3 bg-white text-black px-8 py-4 rounded-[20px] font-black uppercase tracking-widest text-xs hover:bg-white/90 transition-all shadow-2xl shadow-white/10 active:scale-95">
+        <button 
+          onClick={() => setIsCreateModalOpen(true)}
+          className="flex items-center gap-3 bg-white text-black px-8 py-4 rounded-[20px] font-black uppercase tracking-widest text-xs hover:bg-white/90 transition-all shadow-2xl shadow-white/10 active:scale-95"
+        >
           <Plus className="w-5 h-5 stroke-[3px]" />
-          Create Space
+          Create Slide
         </button>
       </header>
+
+      <CreateSlideModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        spaces={spaces}
+        onCreate={handleCreateSlide}
+      />
 
       {/* Shortcuts - High Visibility */}
       <section className="grid grid-cols-1 md:grid-cols-3 gap-8">

@@ -133,7 +133,7 @@ const EditorPage: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [chatInput, setChatInput] = useState('');
   const [chatHistory, setChatHistory] = useState<{role: 'user'|'ai', text: string}[]>([]);
-  const [previewMode, setPreviewMode] = useState<'dev' | 'build'>('dev');
+  const [previewMode, setPreviewMode] = useState<'dev' | 'build'>('build');
   const [outlineHeight, setOutlineHeight] = useState(240);
   const [snippets, setSnippets] = useState<Snippet[]>([]);
   const [collaboratorModalOpen, setCollaboratorModalOpen] = useState(false);
