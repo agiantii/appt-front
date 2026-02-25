@@ -392,7 +392,7 @@ const EditorPage: React.FC = () => {
         label: s.name, 
         type: "text", 
         detail: "Snippet", 
-        apply: s.code 
+        apply: s.content
       })),
       filter: true
     };
