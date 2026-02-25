@@ -21,7 +21,8 @@ import { snippetApi } from '../../api/snippet';
 import { userApi } from '../../api/user';
 import { versionApi } from '../../api/version';
 import { uploadApi } from '../../api/upload';
-import { SidebarTab, Slide, Snippet, User, ConnectionInfo } from '../../types';
+import { spaceApi } from '../../api/space';
+import { SidebarTab, Slide, SlideSpace, Snippet, User, ConnectionInfo } from '../../types';
 import { PERMISSIONS, SlideRole } from '../../constant/permissions';
 import ResizableLayout from '../../components/Editor/ResizablePanels';
 import { GoogleGenAI } from '@google/genai';
@@ -158,6 +159,7 @@ const EditorPage: React.FC = () => {
   
   const [slides, setSlides] = useState<Slide[]>([]);
   const [currentSlide, setCurrentSlide] = useState<Slide | null>(null);
+  const [currentSpace, setCurrentSpace] = useState<SlideSpace | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activeTab, setActiveTab] = useState<SidebarTab>('explorer');
   const [previewOpen, setPreviewOpen] = useState(true);
@@ -188,6 +190,9 @@ const EditorPage: React.FC = () => {
     if (slideSpaceId) {
       slideApi.findAllBySpace(Number(slideSpaceId)).then(res => {
         if (res.statusCode === 0) setSlides(res.data);
+      });
+      spaceApi.findOne(Number(slideSpaceId)).then(res => {
+        if (res.statusCode === 0) setCurrentSpace(res.data);
       });
     }
     if (slideId) {
@@ -638,9 +643,9 @@ const EditorPage: React.FC = () => {
       </div>
       <div className="h-10 border-t border-white/5 flex items-center justify-between px-4 bg-[#09090b] text-[10px] font-bold text-white/30 uppercase tracking-widest flex-shrink-0">
         <div className="flex items-center gap-6">
-           <div className="flex items-center gap-2 hover:text-white transition-colors cursor-pointer"><ImageIcon className="w-3.5 h-3.5" /> Media</div>
+           {/* <div className="flex items-center gap-2 hover:text-white transition-colors cursor-pointer"><ImageIcon className="w-3.5 h-3.5" /> Media</div>
            <div className="flex items-center gap-2 hover:text-white transition-colors cursor-pointer"><Layout className="w-3.5 h-3.5" /> Layouts</div>
-           <div className="flex items-center gap-2 hover:text-white transition-colors cursor-pointer"><SettingsIcon className="w-3.5 h-3.5" /> Config</div>
+           <div className="flex items-center gap-2 hover:text-white transition-colors cursor-pointer"><SettingsIcon className="w-3.5 h-3.5" /> Config</div> */}
         </div>
         <div>Ln {content?.split('\n').length || 0}, Col {content?.length || 0}</div>
       </div>
@@ -699,6 +704,7 @@ const EditorPage: React.FC = () => {
         <div className="flex-1 flex flex-col min-w-0">
           <EditorHeader 
             currentSlide={currentSlide}
+            currentSpace={currentSpace}
             collaborators={collaborators}
             onlineUsers={onlineUsers}
             isSaving={isSaving}
@@ -706,6 +712,7 @@ const EditorPage: React.FC = () => {
             previewOpen={previewOpen}
             onTogglePreview={() => setPreviewOpen(!previewOpen)}
             slideId={slideId}
+            slideSpaceId={slideSpaceId}
             onOpenCollaboratorModal={() => setCollaboratorModalOpen(true)}
             onSlideUpdate={(updatedSlide) => setCurrentSlide(updatedSlide)}
           />

@@ -2,12 +2,13 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Share2, Save, CheckCircle2, Eye, Play, Settings, Globe, MessageSquare, X, ImageIcon } from 'lucide-react';
-import { Slide, User } from '../../../types';
+import { Slide, SlideSpace, User } from '../../../types';
 import { slideApi } from '../../../api/slide';
 import { uploadApi } from '../../../api/upload';
 
 interface EditorHeaderProps {
   currentSlide: Slide | null;
+  currentSpace: SlideSpace | null;
   collaborators: User[];
   onlineUsers: {name: string; color: string}[];
   isSaving: boolean;
@@ -15,12 +16,14 @@ interface EditorHeaderProps {
   previewOpen: boolean;
   onTogglePreview: () => void;
   slideId: string | undefined;
+  slideSpaceId: string | undefined;
   onOpenCollaboratorModal: () => void;
   onSlideUpdate?: (slide: Slide) => void;
 }
 
 const EditorHeader: React.FC<EditorHeaderProps> = ({ 
   currentSlide, 
+  currentSpace,
   collaborators, 
   onlineUsers,
   isSaving, 
@@ -28,6 +31,7 @@ const EditorHeader: React.FC<EditorHeaderProps> = ({
   previewOpen, 
   onTogglePreview,
   slideId,
+  slideSpaceId,
   onOpenCollaboratorModal,
   onSlideUpdate
 }) => {
@@ -143,7 +147,12 @@ const EditorHeader: React.FC<EditorHeaderProps> = ({
       <div className="flex items-center gap-10">
         <div className="flex flex-col">
           <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.25em]">Project Space</span>
-          <span className="text-sm font-bold truncate max-w-[300px] text-white/90">{currentSlide?.title || 'Loading...'}</span>
+          <Link 
+            to={`/slide/${slideSpaceId}`}
+            className="text-sm font-bold truncate max-w-[300px] text-white/90 hover:text-white/70 transition-colors cursor-pointer"
+          >
+            {currentSpace?.name || 'Loading...'}
+          </Link>
         </div>
         <div className="h-6 w-px bg-white/5" />
         <div className="flex items-center gap-4">
