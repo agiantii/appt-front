@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { Settings, Plus, Search, Filter, LayoutGrid, List, ArrowLeft, MoreVertical as MoreIcon, ChevronRight, ChevronDown, Share2, FolderOpen, FileText, Zap as ZapIcon, CheckCircle, AlertCircle, X } from 'lucide-react';
+import { Settings, Plus, Search, Filter, LayoutGrid, List, ArrowLeft, MoreVertical as MoreIcon, ChevronRight, ChevronDown, Share2, FolderOpen, FileText, Zap as ZapIcon, CheckCircle, AlertCircle, X, Pencil, Play } from 'lucide-react';
 import { spaceApi } from '../../api/space';
 import { slideApi } from '../../api/slide';
 import FileTree from '../../components/SpaceTree/FileTree';
@@ -137,13 +137,11 @@ const SpaceDetail: React.FC = () => {
         <div 
           className="group flex items-center hover:bg-white/[0.03] transition-colors py-2 px-4 cursor-pointer"
           style={{ paddingLeft: `${level * 24 + 16}px` }}
-          onClick={
-            () => hasChildren ? 
-            toggleNode(node.id) : 
-            navigate(`/slide/presentation/${node.id}`)
-          }
         >
-          <div className="flex items-center gap-3 flex-1 min-w-0">
+          <div 
+            className="flex items-center gap-3 flex-1 min-w-0"
+            onClick={() => hasChildren ? toggleNode(node.id) : navigate(`/slide/${slideSpaceId}/${node.id}`)}
+          >
             {hasChildren ? (
               isExpanded ? <ChevronDown className="w-3.5 h-3.5 text-white/40" /> : <ChevronRight className="w-3.5 h-3.5 text-white/40" />
             ) : (
@@ -154,6 +152,33 @@ const SpaceDetail: React.FC = () => {
             </span>
             <div className="flex-1 border-b border-dotted border-white/5 mx-4 min-w-[20px]" />
           </div>
+          
+          {/* 操作按钮 */}
+          {!hasChildren && (
+            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity mr-3">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigate(`/slide/${slideSpaceId}/${node.id}`);
+                }}
+                className="p-1.5 hover:bg-white/10 text-white/40 hover:text-white rounded transition-colors"
+                title="编辑"
+              >
+                <Pencil className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigate(`/slide/presentation/${node.id}`);
+                }}
+                className="p-1.5 hover:bg-white/10 text-white/40 hover:text-green-400 rounded transition-colors"
+                title="演示"
+              >
+                <Play className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+          
           <div className="text-[11px] font-mono text-white/20 group-hover:text-white/40 transition-colors whitespace-nowrap">
             {new Date(node.updatedAt).toLocaleDateString()}
           </div>
