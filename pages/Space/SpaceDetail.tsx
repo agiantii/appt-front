@@ -137,7 +137,11 @@ const SpaceDetail: React.FC = () => {
         <div 
           className="group flex items-center hover:bg-white/[0.03] transition-colors py-2 px-4 cursor-pointer"
           style={{ paddingLeft: `${level * 24 + 16}px` }}
-          onClick={() => hasChildren ? toggleNode(node.id) : navigate(`/slide/${slideSpaceId}/${node.id}`)}
+          onClick={
+            () => hasChildren ? 
+            toggleNode(node.id) : 
+            navigate(`/slide/presentation/${node.id}`)
+          }
         >
           <div className="flex items-center gap-3 flex-1 min-w-0">
             {hasChildren ? (
@@ -216,17 +220,6 @@ const SpaceDetail: React.FC = () => {
                 <span>Spaces</span>
                 <ChevronRight className="w-3 h-3" />
                 <span className="text-white/70">{space.name}</span>
-             </div>
-             <div className="flex items-center gap-3">
-                <div className="flex -space-x-3 mr-4">
-                  {[1,2,3].map(i => (
-                    <img key={i} src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${i}`} className="w-8 h-8 rounded-full border-4 border-[#09090b]" />
-                  ))}
-                </div>
-                <button className="flex items-center gap-2 px-5 py-2.5 bg-white/5 border border-white/10 rounded-2xl text-[10px] font-black uppercase tracking-widest text-white/40 hover:text-white transition-all">
-                   <Share2 className="w-4 h-4" />
-                   Invite
-                </button>
              </div>
           </div>
 

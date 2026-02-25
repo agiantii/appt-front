@@ -20,6 +20,7 @@ import { slideApi } from '../../api/slide';
 import { snippetApi } from '../../api/snippet';
 import { userApi } from '../../api/user';
 import { versionApi } from '../../api/version';
+import { uploadApi } from '../../api/upload';
 import { SidebarTab, Slide, Snippet, User, ConnectionInfo } from '../../types';
 import { PERMISSIONS, SlideRole } from '../../constant/permissions';
 import ResizableLayout from '../../components/Editor/ResizablePanels';
@@ -398,6 +399,45 @@ const EditorPage: React.FC = () => {
     };
   }, [snippets]);
 
+  // Handle paste image
+  const handlePasteImage = useCallback(async (event: ClipboardEvent) => {
+    const items = event.clipboardData?.items;
+    if (!items) return;
+
+    for (const item of Array.from(items)) {
+      if (item.type.startsWith('image/')) {
+        event.preventDefault();
+        const file = item.getAsFile();
+        if (!file) continue;
+
+        try {
+          const res = await uploadApi.uploadImage(file);
+          if (res.statusCode === 0 && res.data?.url) {
+            const imageUrl = res.data.url;
+            const imageMarkdown = `![](${imageUrl})`;
+            
+            if (editorViewRef.current) {
+              const { state, dispatch } = editorViewRef.current;
+              const range = state.selection.main;
+              dispatch({
+                changes: { from: range.from, to: range.to, insert: imageMarkdown },
+                selection: { anchor: range.from + imageMarkdown.length }
+              });
+              editorViewRef.current.focus();
+            }
+            addToast('图片上传成功', 'success');
+          } else {
+            addToast(res.message || '图片上传失败', 'error');
+          }
+        } catch (err) {
+          console.error('Upload image failed:', err);
+          addToast('图片上传失败', 'error');
+        }
+        break;
+      }
+    }
+  }, []);
+
   const manualBasicSetup = useMemo(() => [
     lineNumbers(),
     highlightActiveLineGutter(),
@@ -436,8 +476,9 @@ const EditorPage: React.FC = () => {
     
     // Get initial content: from Yjs (collaborative) or currentSlide (local)
     const initialDoc = isCollaborativeMode 
+      // ? ""
       ? (yTextRef.current!.toString() || "")
-      : ("");
+      : (currentSlide?.content || "");
 
     // Check if user has edit permission
     const canEdit = userRole ? PERMISSIONS[userRole]?.includes('edit') : false;
@@ -483,10 +524,15 @@ const EditorPage: React.FC = () => {
 
     editorViewRef.current = view;
 
+    // Add paste event listener for image upload
+    const container = editorContainerRef.current;
+    container.addEventListener('paste', handlePasteImage);
+
     return () => {
+      container.removeEventListener('paste', handlePasteImage);
       view.destroy();
     };
-  }, [slideId, manualBasicSetup, snippetCompletionSource, isAuthenticated, userRole, currentSlide?.content]);
+  }, [slideId, manualBasicSetup, snippetCompletionSource, isAuthenticated, userRole, currentSlide?.content, handlePasteImage]);
 
   const handleSave = useCallback(async () => {
     if (!slideId) return;

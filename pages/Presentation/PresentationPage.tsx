@@ -1,19 +1,17 @@
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { 
-  Maximize2, 
-  Minimize, 
-  ChevronLeft, 
-  ChevronRight, 
-  Send, 
-  Heart, 
-  Bookmark, 
-  Share2, 
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  Maximize2,
+  Minimize,
+  ChevronLeft,
+  ChevronRight,
+  Send,
+  Heart,
+  Bookmark,
+  Share2,
   Eye,
   Loader2,
   RefreshCw,
-  ChevronDown,
-  Trash2,
   X,
   CheckCircle2,
   AlertCircle
@@ -23,6 +21,7 @@ import { slideApi } from '../../api/slide';
 import { commentApi } from '../../api/comment';
 import { Slide, Comment } from '../../types';
 import { ConfirmModal, Modal } from '../../components/Common/Modal';
+import { CommentTree } from '../Editor/components/CommentTree';
 
 // Toast 组件
 interface Toast {
@@ -55,107 +54,7 @@ const ToastContainer: React.FC<{ toasts: Toast[]; onRemove: (id: number) => void
   );
 };
 
-// 无限嵌套评论组件
-const CommentTree: React.FC<{
-  comments: Comment[];
-  parentId: number | null;
-  level: number;
-  currentUserId?: number;
-  onReply: (comment: Comment) => void;
-  onDelete: (comment: Comment) => void;
-  parentUsername?: string;
-  collapsedComments: Set<number>;
-  onToggleCollapse: (commentId: number) => void;
-}> = ({ comments, parentId, level, currentUserId, onReply, onDelete, parentUsername, collapsedComments, onToggleCollapse }) => {
-  const children = comments.filter(c => c.replyId === parentId);
-  if (children.length === 0) return null;
-  
-  const maxIndent = 4;
-  const indent = Math.min(level, maxIndent);
-  const isNested = level > 0;
-  
-  return (
-    <div className={`space-y-2 ${isNested ? `ml-${indent * 3} border-l-2 border-white/5 pl-3` : ''}`}>
-      {children.map((comment) => {
-        const replies = comments.filter(c => c.replyId === comment.id);
-        const hasReplies = replies.length > 0;
-        const isCollapsed = collapsedComments.has(comment.id);
-        
-        return (
-          <div key={comment.id} className="space-y-2">
-            <div className={`${isNested ? 'p-2.5 bg-white/[0.02] rounded-lg' : 'p-3 bg-white/5 rounded-xl'} border border-white/5`}>
-              <div className="flex items-center justify-between mb-1.5">
-                <div className="flex items-center gap-2 flex-wrap">
-                  {comment.avatarUrl ? (
-                    <img src={comment.avatarUrl} alt="" className={isNested ? 'w-4 h-4 rounded-full' : 'w-5 h-5 rounded-full'} />
-                  ) : (
-                    <div className={`${isNested ? 'w-4 h-4 text-[7px]' : 'w-5 h-5 text-[8px]'} rounded-full bg-white/10 flex items-center justify-center text-white/50`}>
-                      {comment.username.charAt(0).toUpperCase()}
-                    </div>
-                  )}
-                  <span className={`${isNested ? 'text-[11px]' : 'text-xs'} font-medium text-white/70`}>{comment.username}</span>
-                  {parentUsername && (
-                    <>
-                      <span className="text-[10px] text-white/20">回复</span>
-                      <span className="text-[11px] text-white/40">@{parentUsername}</span>
-                    </>
-                  )}
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className={`${isNested ? 'text-[9px]' : 'text-[10px]'} text-white/30`}>
-                    {new Date(comment.createdAt).toLocaleDateString()}
-                  </span>
-                  {currentUserId === comment.userId && (
-                    <button
-                      onClick={() => onDelete(comment)}
-                      className={`${isNested ? 'p-0.5' : 'p-1'} hover:bg-red-500/10 rounded text-white/20 hover:text-red-400 transition-colors`}
-                    >
-                      <Trash2 className={isNested ? 'w-2.5 h-2.5' : 'w-3 h-3'} />
-                    </button>
-                  )}
-                </div>
-              </div>
-              <p className={`${isNested ? 'text-[11px]' : 'text-xs'} text-white/60 leading-relaxed`}>{comment.content}</p>
-              <div className="flex items-center gap-3 mt-2">
-                <button
-                  onClick={() => onReply(comment)}
-                  className="text-[10px] text-white/30 hover:text-white/60 transition-colors"
-                >
-                  回复
-                </button>
-                {hasReplies && (
-                  <button
-                    onClick={() => onToggleCollapse(comment.id)}
-                    className="flex items-center gap-1 text-[10px] text-white/30 hover:text-white/60 transition-colors"
-                  >
-                    {isCollapsed ? (
-                      <><ChevronRight className="w-3 h-3" />{replies.length} 条回复</>
-                    ) : (
-                      <><ChevronDown className="w-3 h-3" />收起</>          
-                    )}
-                  </button>
-                )}
-              </div>
-            </div>
-            {!isCollapsed && (
-              <CommentTree
-                comments={comments}
-                parentId={comment.id}
-                level={level + 1}
-                currentUserId={currentUserId}
-                onReply={onReply}
-                onDelete={onDelete}
-                parentUsername={comment.username}
-                collapsedComments={collapsedComments}
-                onToggleCollapse={onToggleCollapse}
-              />
-            )}
-          </div>
-        );
-      })}
-    </div>
-  );
-};
+
 
 const PresentationPage: React.FC = () => {
   const { slideId } = useParams();
@@ -466,25 +365,6 @@ const PresentationPage: React.FC = () => {
           )}
         </div>
 
-        {/* 底部页码控制 */}
-        <div className="h-14 border-t border-white/5 flex items-center justify-center gap-4 bg-[#09090b]">
-          <button 
-            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-            disabled={currentPage <= 1}
-            className="p-2 hover:bg-white/5 rounded-lg text-white/40 hover:text-white transition-all disabled:opacity-30"
-          >
-            <ChevronLeft className="w-5 h-5" />
-          </button>
-          <div className="px-4 text-xs font-bold tracking-[0.2em] text-white/40">
-            <span className="text-white">{currentPage.toString().padStart(2, '0')}</span>
-          </div>
-          <button 
-            onClick={() => setCurrentPage(p => p + 1)}
-            className="p-2 hover:bg-white/5 rounded-lg text-white/40 hover:text-white transition-all"
-          >
-            <ChevronRight className="w-5 h-5" />
-          </button>
-        </div>
       </div>
 
       {/* 右侧：互动面板 */}
@@ -493,27 +373,6 @@ const PresentationPage: React.FC = () => {
         <div className="p-6 border-b border-white/5">
           <div className="flex items-center justify-between mb-4">
             <h1 className="text-lg font-bold text-white/90 truncate">{slide.title}</h1>
-            <div className="flex items-center gap-1 text-[10px] text-white/30 bg-white/5 px-2 py-1 rounded-full">
-              <Eye className="w-3 h-3" />
-              <span>12</span>
-            </div>
-          </div>
-          <div className="flex items-center gap-4">
-            <button 
-              onClick={() => setLiked(!liked)}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all ${liked ? 'bg-red-500/20 text-red-400' : 'bg-white/5 text-white/40 hover:text-white/60'}`}
-            >
-              <Heart className={`w-4 h-4 ${liked ? 'fill-current' : ''}`} />
-              <span className="text-[10px] font-bold">1.2k</span>
-            </button>
-            <button className="flex items-center gap-2 px-3 py-1.5 bg-white/5 rounded-lg text-white/40 hover:text-white/60 transition-all">
-              <Bookmark className="w-4 h-4" />
-              <span className="text-[10px] font-bold">340</span>
-            </button>
-            <button className="flex items-center gap-2 px-3 py-1.5 bg-white/5 rounded-lg text-white/40 hover:text-white/60 transition-all ml-auto">
-              <Share2 className="w-4 h-4" />
-              <span className="text-[10px] font-bold">分享</span>
-            </button>
           </div>
         </div>
 
@@ -536,11 +395,11 @@ const PresentationPage: React.FC = () => {
                 <p className="text-[10px] mt-2 opacity-20">发表第一条评论吧</p>
               </div>
             ) : (
-              <CommentTree 
-                comments={comments} 
-                parentId={null} 
+              <CommentTree
+                comments={comments}
+                parentId={null}
                 level={0}
-                currentUserId={currentUserId}
+                currentUser={currentUserId ? { id: currentUserId, username: '', avatarUrl: null } : null}
                 onReply={setReplyTo}
                 onDelete={setCommentToDelete}
                 collapsedComments={collapsedComments}

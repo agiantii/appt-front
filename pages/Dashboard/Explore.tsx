@@ -1,50 +1,99 @@
 
 import React, { useEffect, useState } from 'react';
-import { Search, Globe, Palette, Box, BookOpen, Heart, Share2, MoreHorizontal } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Search, Palette, Box, BookOpen, Heart, Share2, MoreHorizontal, CheckCircle, AlertCircle } from 'lucide-react';
 import { slideApi } from '../../api/slide';
 import { themeApi, pluginApi } from '../../api/discovery';
 
+// Toast 通知组件
+interface Toast {
+  id: number;
+  message: string;
+  type: 'success' | 'error';
+}
+
+const ToastContainer: React.FC<{ toasts: Toast[]; onRemove: (id: number) => void }> = ({ toasts, onRemove }) => {
+  useEffect(() => {
+    toasts.forEach(toast => {
+      setTimeout(() => onRemove(toast.id), 2000);
+    });
+  }, [toasts, onRemove]);
+
+  return (
+    <div className="fixed top-4 right-4 z-[100] space-y-2">
+      {toasts.map(toast => (
+        <div
+          key={toast.id}
+          className={`flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg animate-in fade-in slide-in-from-right duration-200 ${
+            toast.type === 'success' ? 'bg-green-500/90 text-white' : 'bg-red-500/90 text-white'
+          }`}
+        >
+          {toast.type === 'success' ? <CheckCircle className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
+          <span className="text-sm font-medium">{toast.message}</span>
+        </div>
+      ))}
+    </div>
+  );
+};
+
 const ExplorePage: React.FC = () => {
-  const [filter, setFilter] = useState<'all' | 'slide' | 'theme' | 'plugin'>('all');
+  const navigate = useNavigate();
+  const [filter, setFilter] = useState<'slide' | 'theme' | 'plugin'>('slide');
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [searchKeyword, setSearchKeyword] = useState('');
+  const [toasts, setToasts] = useState<Toast[]>([]);
+
+  const addToast = (message: string, type: 'success' | 'error') => {
+    const id = Date.now();
+    setToasts(prev => [...prev, { id, message, type }]);
+  };
+
+  const removeToast = (id: number) => {
+    setToasts(prev => prev.filter(t => t.id !== id));
+  };
 
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       try {
         let results: any[] = [];
-        if (filter === 'all' || filter === 'slide') {
-          const res = await slideApi.search({ pageSize: 12 });
+        if (filter === 'slide') {
+          const res = await slideApi.search({ keyword: searchKeyword || undefined, pageSize: 12 });
           if (res.statusCode === 0) {
-            results = [...results, ...res.data.items.map(i => ({ ...i, type: 'slide', author: 'Community' }))];
+            results = res.data.items.map(i => ({ ...i, type: 'slide', author: 'Community' }));
           }
         }
-        if (filter === 'all' || filter === 'theme') {
+        if (filter === 'theme') {
           const res = await themeApi.findAll();
           if (res.statusCode === 0) {
-            results = [...results, ...res.data.map(i => ({ ...i, title: i.packageName, type: 'theme', author: 'Official' }))];
+            const themes = res.data.map(i => ({ ...i, title: i.packageName, type: 'theme', author: 'Official' }));
+            results = searchKeyword 
+              ? themes.filter(t => t.title.toLowerCase().includes(searchKeyword.toLowerCase()))
+              : themes;
           }
         }
-        if (filter === 'all' || filter === 'plugin') {
+        if (filter === 'plugin') {
           const res = await pluginApi.findAll();
           if (res.statusCode === 0) {
-            results = [...results, ...res.data.map(i => ({ ...i, title: i.packageName, type: 'plugin', author: 'Official' }))];
+            const plugins = res.data.map(i => ({ ...i, title: i.packageName, type: 'plugin', author: 'Official' }));
+            results = searchKeyword 
+              ? plugins.filter(p => p.title.toLowerCase().includes(searchKeyword.toLowerCase()))
+              : plugins;
           }
         }
         setItems(results);
       } catch (err) {
-        console.error(err);
+        addToast('Failed to load data', 'error');
       } finally {
         setLoading(false);
       }
     };
 
     fetchData();
-  }, [filter]);
+  }, [filter, searchKeyword]);
 
   const categories = [
-    { id: 'all', label: 'All Resources', icon: Globe },
     { id: 'slide', label: 'Slide Templates', icon: BookOpen },
     { id: 'theme', label: 'System Themes', icon: Palette },
     { id: 'plugin', label: 'Advanced Plugins', icon: Box },
@@ -63,6 +112,8 @@ const ExplorePage: React.FC = () => {
           <input 
             type="text" 
             placeholder="Search the ecosystem..."
+            value={searchKeyword}
+            onChange={(e) => setSearchKeyword(e.target.value)}
             className="w-full bg-[#18181b] border border-white/5 rounded-2xl py-3.5 pl-12 pr-6 text-sm focus:outline-none focus:ring-4 focus:ring-white/5 transition-all placeholder:text-white/20"
           />
         </div>
@@ -87,7 +138,11 @@ const ExplorePage: React.FC = () => {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
         {items.map(item => (
-          <div key={`${item.type}-${item.id}`} className="group bg-[#0c0c0e] border border-white/5 rounded-[32px] overflow-hidden hover:border-white/10 transition-all cursor-pointer flex flex-col hover:shadow-2xl hover:shadow-white/5">
+          <div 
+            key={`${item.type}-${item.id}`} 
+            onClick={() => item.type === 'slide' && navigate(`/slide/presentation/${item.id}`)}
+            className={`group bg-[#0c0c0e] border border-white/5 rounded-[32px] overflow-hidden hover:border-white/10 transition-all flex flex-col hover:shadow-2xl hover:shadow-white/5 ${item.type === 'slide' ? 'cursor-pointer' : ''}`}
+          >
             <div className="aspect-[16/11] bg-[#18181b] overflow-hidden relative">
               <img 
                 src={item.previewUrl || `https://picsum.photos/seed/${item.id}/400/250`} 
@@ -116,18 +171,18 @@ const ExplorePage: React.FC = () => {
                 <MoreHorizontal className="w-5 h-5 text-white/10" />
               </div>
               <p className="text-sm text-white/40 font-medium">Design by <span className="text-white/60">{item.author}</span></p>
-              <div className="mt-auto pt-6 flex items-center justify-between">
+              {/* <div className="mt-auto pt-6 flex items-center justify-between">
                  <div className="flex -space-x-2">
                    {[1,2,3].map(i => (
                      <img key={i} src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${item.id + i}`} className="w-6 h-6 rounded-full border-2 border-[#0c0c0e]" />
                    ))}
                  </div>
-                 <span className="text-[10px] font-black text-white/20 uppercase tracking-widest">1.2k Installs</span>
-              </div>
+              </div> */}
             </div>
           </div>
         ))}
       </div>
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>
   );
 };
