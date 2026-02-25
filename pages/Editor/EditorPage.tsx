@@ -414,7 +414,8 @@ const EditorPage: React.FC = () => {
           const res = await uploadApi.uploadImage(file);
           if (res.statusCode === 0 && res.data?.url) {
             const imageUrl = res.data.url;
-            const imageMarkdown = `![](${imageUrl})`;
+            const imageMarkdown = 
+            `<img src="${imageUrl}" alt="Uploaded image">`
             
             if (editorViewRef.current) {
               const { state, dispatch } = editorViewRef.current;
