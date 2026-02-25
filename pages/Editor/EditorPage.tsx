@@ -25,7 +25,7 @@ import { spaceApi } from '../../api/space';
 import { SidebarTab, Slide, SlideSpace, Snippet, User, ConnectionInfo } from '../../types';
 import { PERMISSIONS, SlideRole } from '../../constant/permissions';
 import ResizableLayout from '../../components/Editor/ResizablePanels';
-import { GoogleGenAI } from '@google/genai';
+import { streamInlineEdit, suggestAltText } from '../../api/ai';
 
 // Custom Hooks & Components
 import { useSlideParser } from './useSlideParser';
@@ -33,6 +33,7 @@ import EditorHeader from './components/EditorHeader';
 import EditorSidebar from './components/EditorSidebar';
 import EditorPreview from './components/EditorPreview';
 import { CollaboratorModal } from '../../components/Editor/CollaboratorModal';
+import { QuickActionWidget } from './components/QuickActionWidget';
 
 // Yjs and Hocuspocus
 import * as Y from 'yjs';
@@ -176,6 +177,11 @@ const EditorPage: React.FC = () => {
   const [permissionDeniedModalOpen, setPermissionDeniedModalOpen] = useState(false);
   const [permissionCountdown, setPermissionCountdown] = useState(2);
   const [toasts, setToasts] = useState<Toast[]>([]);
+
+  // Ctrl+I AI 助手状态
+  const [quickActionOpen, setQuickActionOpen] = useState(false);
+  const [quickActionPos, setQuickActionPos] = useState({ top: 0, left: 0 });
+  const [quickActionSelection, setQuickActionSelection] = useState<{ from: number; to: number; text: string }>({ from: 0, to: 0, text: '' });
 
   const addToast = (message: string, type: 'success' | 'error') => {
     const id = Date.now();
@@ -404,7 +410,7 @@ const EditorPage: React.FC = () => {
     };
   }, [snippets]);
 
-  // Handle paste image
+  // Handle paste image + 智能 alt 建议
   const handlePasteImage = useCallback(async (event: ClipboardEvent) => {
     const items = event.clipboardData?.items;
     if (!items) return;
@@ -419,12 +425,14 @@ const EditorPage: React.FC = () => {
           const res = await uploadApi.uploadImage(file);
           if (res.statusCode === 0 && res.data?.url) {
             const imageUrl = res.data.url;
-            const imageMarkdown = 
-            `<img src="${imageUrl}" alt="Uploaded image">`
+            const tempAlt = 'Uploaded image';
+            const imageMarkdown = `<img src="${imageUrl}" alt="${tempAlt}">`;
             
+            let insertPos = 0;
             if (editorViewRef.current) {
               const { state, dispatch } = editorViewRef.current;
               const range = state.selection.main;
+              insertPos = range.from;
               dispatch({
                 changes: { from: range.from, to: range.to, insert: imageMarkdown },
                 selection: { anchor: range.from + imageMarkdown.length }
@@ -432,6 +440,26 @@ const EditorPage: React.FC = () => {
               editorViewRef.current.focus();
             }
             addToast('图片上传成功', 'success');
+
+            // 异步调用 AI 生成 alt 文本
+            const surroundingText = editorViewRef.current?.state.doc.toString() || '';
+            try {
+              const alt = await suggestAltText({ imageUrl, surroundingText });
+              if (alt && alt !== tempAlt && editorViewRef.current) {
+                const doc = editorViewRef.current.state.doc.toString();
+                const oldTag = `<img src="${imageUrl}" alt="${tempAlt}">`;
+                const newTag = `<img src="${imageUrl}" alt="${alt}">`;
+                const idx = doc.indexOf(oldTag);
+                if (idx !== -1) {
+                  editorViewRef.current.dispatch({
+                    changes: { from: idx, to: idx + oldTag.length, insert: newTag }
+                  });
+                  addToast('AI 已生成图片描述', 'success');
+                }
+              }
+            } catch {
+              // alt 生成失败不影响主流程
+            }
           } else {
             addToast(res.message || '图片上传失败', 'error');
           }
@@ -463,7 +491,7 @@ const EditorPage: React.FC = () => {
     highlightActiveLine(),
     highlightSelectionMatches(),
     keymap.of([
-      indentWithTab, // Enable Tab indentation
+      indentWithTab,
       ...closeBracketsKeymap,
       ...defaultKeymap,
       ...searchKeymap,
@@ -471,6 +499,30 @@ const EditorPage: React.FC = () => {
       ...foldKeymap,
       ...completionKeymap,
     ]),
+    // Ctrl+I: AI 助手 (支持 / 命令 + 自由输入)
+    Prec.highest(keymap.of([{
+      key: 'Mod-i',
+      run: (view: EditorView) => {
+        const { state } = view;
+        const sel = state.selection.main;
+        let from = sel.from;
+        let to = sel.to;
+        let text = state.sliceDoc(from, to);
+        if (from === to) {
+          const line = state.doc.lineAt(from);
+          from = line.from;
+          to = line.to;
+          text = line.text;
+        }
+        const coords = view.coordsAtPos(from);
+        if (coords) {
+          setQuickActionSelection({ from, to, text });
+          setQuickActionPos({ top: coords.top - 10, left: coords.left });
+          setQuickActionOpen(true);
+        }
+        return true;
+      },
+    }])),
   ], []);
 
   // Initialize editor - supports both collaborative mode (with WebSocket) and local mode (without WebSocket)
@@ -578,19 +630,45 @@ const EditorPage: React.FC = () => {
     setChatInput('');
     setChatHistory(prev => [...prev, { role: 'user', text: userText }]);
 
-    try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-      const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
-        contents: `You are an expert Slidev designer. Help the user edit this presentation:\n\nContent:\n${content}\n\nUser Request: ${userText}`,
-      });
-      
-      const aiText = response.text || "I'm sorry, I couldn't process that.";
-      setChatHistory(prev => [...prev, { role: 'ai', text: aiText }]);
-    } catch (e) {
-      setChatHistory(prev => [...prev, { role: 'ai', text: "Assistant currently offline." }]);
-    }
+    let aiText = '';
+    await streamInlineEdit(
+      { selectedText: content || '', instruction: userText, fullContent: content || '' },
+      (chunk) => { aiText += chunk; },
+      () => { setChatHistory(prev => [...prev, { role: 'ai', text: aiText || 'No response.' }]); },
+      (err) => { setChatHistory(prev => [...prev, { role: 'ai', text: `Error: ${err}` }]); },
+    );
   };
+
+  // Ctrl+I Accept: 替换选中文本
+  const handleQuickActionAccept = useCallback((result: string) => {
+    if (editorViewRef.current) {
+      const { from, to } = quickActionSelection;
+      editorViewRef.current.dispatch({
+        changes: { from, to, insert: result },
+      });
+      editorViewRef.current.focus();
+    }
+    setQuickActionOpen(false);
+  }, [quickActionSelection]);
+
+  const handleQuickActionReject = useCallback(() => {
+    setQuickActionOpen(false);
+    editorViewRef.current?.focus();
+  }, []);
+
+  // 侧边栏大纲插入: 追加内容到编辑器末尾
+  const handleInsertContent = useCallback((text: string) => {
+    if (editorViewRef.current) {
+      const doc = editorViewRef.current.state.doc;
+      const end = doc.length;
+      const separator = end > 0 ? '\n\n---\n\n' : '';
+      editorViewRef.current.dispatch({
+        changes: { from: end, insert: separator + text },
+        selection: { anchor: end + separator.length + text.length },
+      });
+      editorViewRef.current.focus();
+    }
+  }, []);
 
   const jumpToSlide = useCallback((line: number) => {
     if (editorViewRef.current) {
@@ -690,6 +768,8 @@ const EditorPage: React.FC = () => {
           onSendChat={handleAiChat}
           slideId={slideId}
           currentUser={currentUser}
+          onInsertContent={handleInsertContent}
+          fullContent={content || ''}
           onVersionRollback={(rolledBackContent) => {
             setContent(rolledBackContent);
             // Update editor content
@@ -754,6 +834,17 @@ const EditorPage: React.FC = () => {
       </div>
 
       <ToastContainer toasts={toasts} onRemove={removeToast} />
+
+      {/* Ctrl+I AI 助手浮动面板 */}
+      {quickActionOpen && (
+        <QuickActionWidget
+          position={quickActionPos}
+          selectedText={quickActionSelection.text}
+          fullContent={content || ''}
+          onAccept={handleQuickActionAccept}
+          onReject={handleQuickActionReject}
+        />
+      )}
     </>
   );
 };

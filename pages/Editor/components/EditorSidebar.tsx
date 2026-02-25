@@ -28,13 +28,15 @@ interface EditorSidebarProps {
   slideId?: string;
   currentUser?: { id: number; username: string; avatarUrl: string | null } | null;
   onVersionRollback?: (content: string) => void;
+  onInsertContent?: (content: string) => void;
+  fullContent?: string;
 }
 
 const EditorSidebar: React.FC<EditorSidebarProps> = ({
   activeTab, setActiveTab, sidebarOpen, setSidebarOpen,
   slides, slideSpaceId, onUpdateSlides, onAddSlide,
   snippets, onInsertSnippet, chatHistory, chatInput, setChatInput, onSendChat,
-  slideId, currentUser, onVersionRollback
+  slideId, currentUser, onVersionRollback, onInsertContent, fullContent
 }) => {
   const navigate = useNavigate();
 
@@ -97,6 +99,8 @@ const EditorSidebar: React.FC<EditorSidebarProps> = ({
                 chatInput={chatInput}
                 setChatInput={setChatInput}
                 onSendChat={onSendChat}
+                onInsertContent={onInsertContent}
+                fullContent={fullContent}
               />
             )}
           </div>
