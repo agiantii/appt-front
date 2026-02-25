@@ -21,10 +21,6 @@ interface EditorSidebarProps {
   onAddSlide: (parentId: number | null) => void;
   snippets: Snippet[];
   onInsertSnippet: (code: string) => void;
-  chatHistory: { role: 'user' | 'ai', text: string }[];
-  chatInput: string;
-  setChatInput: (input: string) => void;
-  onSendChat: () => void;
   slideId?: string;
   currentUser?: { id: number; username: string; avatarUrl: string | null } | null;
   onVersionRollback?: (content: string) => void;
@@ -35,7 +31,7 @@ interface EditorSidebarProps {
 const EditorSidebar: React.FC<EditorSidebarProps> = ({
   activeTab, setActiveTab, sidebarOpen, setSidebarOpen,
   slides, slideSpaceId, onUpdateSlides, onAddSlide,
-  snippets, onInsertSnippet, chatHistory, chatInput, setChatInput, onSendChat,
+  snippets, onInsertSnippet,
   slideId, currentUser, onVersionRollback, onInsertContent, fullContent
 }) => {
   const navigate = useNavigate();
@@ -95,10 +91,6 @@ const EditorSidebar: React.FC<EditorSidebarProps> = ({
             )}
             {activeTab === 'ai' && (
               <AIPanel
-                chatHistory={chatHistory}
-                chatInput={chatInput}
-                setChatInput={setChatInput}
-                onSendChat={onSendChat}
                 onInsertContent={onInsertContent}
                 fullContent={fullContent}
               />

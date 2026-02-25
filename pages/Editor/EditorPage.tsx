@@ -168,8 +168,7 @@ const EditorPage: React.FC = () => {
   const [collaborators, setCollaborators] = useState<User[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  const [chatInput, setChatInput] = useState('');
-  const [chatHistory, setChatHistory] = useState<{role: 'user'|'ai', text: string}[]>([]);
+
   const [previewMode, setPreviewMode] = useState<'dev' | 'build'>('build');
   const [outlineHeight, setOutlineHeight] = useState(240);
   const [snippets, setSnippets] = useState<Snippet[]>([]);
@@ -624,21 +623,6 @@ const EditorPage: React.FC = () => {
     handleSaveAndVersionRef.current = handleSaveAndCreateVersion;
   }, [handleSave, handleSaveAndCreateVersion]);
 
-  const handleAiChat = async () => {
-    if (!chatInput.trim()) return;
-    const userText = chatInput;
-    setChatInput('');
-    setChatHistory(prev => [...prev, { role: 'user', text: userText }]);
-
-    let aiText = '';
-    await streamInlineEdit(
-      { selectedText: content || '', instruction: userText, fullContent: content || '' },
-      (chunk) => { aiText += chunk; },
-      () => { setChatHistory(prev => [...prev, { role: 'ai', text: aiText || 'No response.' }]); },
-      (err) => { setChatHistory(prev => [...prev, { role: 'ai', text: `Error: ${err}` }]); },
-    );
-  };
-
   // Ctrl+I Accept: 替换选中文本
   const handleQuickActionAccept = useCallback((result: string) => {
     if (editorViewRef.current) {
@@ -762,10 +746,6 @@ const EditorPage: React.FC = () => {
           onAddSlide={handleAddSlide}
           snippets={snippets}
           onInsertSnippet={insertSnippet}
-          chatHistory={chatHistory}
-          chatInput={chatInput}
-          setChatInput={setChatInput}
-          onSendChat={handleAiChat}
           slideId={slideId}
           currentUser={currentUser}
           onInsertContent={handleInsertContent}

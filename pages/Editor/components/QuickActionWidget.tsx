@@ -29,6 +29,7 @@ export const QuickActionWidget: React.FC<QuickActionWidgetProps> = ({
   const [error, setError] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [selectedIndex, setSelectedIndex] = useState(0);
   const abortRef = useRef<AbortController | null>(null);
   const resultRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -54,6 +55,11 @@ export const QuickActionWidget: React.FC<QuickActionWidgetProps> = ({
   const filteredCommands = input.startsWith('/')
     ? SLASH_COMMANDS.filter(c => c.command.startsWith(input.split(' ')[0].toLowerCase()))
     : [];
+
+  // 重置选中索引当过滤结果变化时
+  useEffect(() => {
+    setSelectedIndex(0);
+  }, [filteredCommands.length]);
 
   // 执行文本编辑指令（流式）
   const executeTextEdit = useCallback(async (instruction: string) => {
@@ -138,6 +144,38 @@ export const QuickActionWidget: React.FC<QuickActionWidgetProps> = ({
     setShowSuggestions(value.startsWith('/') && !loading && !done);
   };
 
+  // 处理键盘导航
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    // 有建议时：上下键导航，Enter 执行选中命令
+    if (showSuggestions && filteredCommands.length > 0) {
+      switch (e.key) {
+        case 'ArrowDown':
+          e.preventDefault();
+          setSelectedIndex(prev => (prev + 1) % filteredCommands.length);
+          return;
+        case 'ArrowUp':
+          e.preventDefault();
+          setSelectedIndex(prev => (prev - 1 + filteredCommands.length) % filteredCommands.length);
+          return;
+        case 'Enter':
+          if (!e.shiftKey) {
+            e.preventDefault();
+            const selectedCommand = filteredCommands[selectedIndex];
+            if (selectedCommand) {
+              handleSelectCommand(selectedCommand.command);
+            }
+          }
+          return;
+      }
+    }
+
+    // 没有建议时：Enter 提交
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit();
+    }
+  };
+
   return (
     <div
       className="fixed z-[200] w-[460px] bg-[#1a1a1f] border border-white/10 rounded-xl shadow-2xl shadow-black/50 backdrop-blur-xl"
@@ -158,9 +196,7 @@ export const QuickActionWidget: React.FC<QuickActionWidgetProps> = ({
             ref={inputRef}
             value={input}
             onChange={(e) => handleInputChange(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit(); }
-            }}
+            onKeyDown={handleKeyDown}
             placeholder="输入指令或 / 查看命令..."
             disabled={loading || done}
             className="flex-1 bg-transparent px-3 py-2 text-xs text-white/90 placeholder:text-white/30 outline-none disabled:opacity-50"
@@ -179,13 +215,17 @@ export const QuickActionWidget: React.FC<QuickActionWidgetProps> = ({
       {showSuggestions && filteredCommands.length > 0 && (
         <div className="px-3 pb-1">
           <div className="bg-black/20 rounded-lg border border-white/5 overflow-hidden">
-            {filteredCommands.map(({ command, label, description, icon: Icon }) => (
+            {filteredCommands.map(({ command, label, description, icon: Icon }, index) => (
               <button
                 key={command}
                 onClick={() => handleSelectCommand(command)}
-                className="w-full flex items-center gap-2.5 px-3 py-2 text-left hover:bg-white/5 transition-colors group"
+                className={`w-full flex items-center gap-2.5 px-3 py-2 text-left transition-colors group ${
+                  index === selectedIndex ? 'bg-white/10' : 'hover:bg-white/5'
+                }`}
               >
-                <Icon className="w-3.5 h-3.5 text-white/30 group-hover:text-violet-400 transition-colors" />
+                <Icon className={`w-3.5 h-3.5 transition-colors ${
+                  index === selectedIndex ? 'text-violet-400' : 'text-white/30 group-hover:text-violet-400'
+                }`} />
                 <span className="text-xs font-mono text-violet-400/80">{command}</span>
                 <span className="text-xs text-white/50">{label}</span>
                 <span className="text-[10px] text-white/25 ml-auto">{description}</span>

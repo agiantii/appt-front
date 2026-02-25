@@ -11,6 +11,8 @@ export interface GenerateOutlineParams {
   topic: string;
   slideCount?: number;
   fullContent?: string;
+  theme?: string;
+  requirements?: string;
 }
 
 export interface SuggestAltParams {
@@ -119,6 +121,59 @@ export async function streamGenerateOutline(
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
       body: JSON.stringify(params),
+      signal: controller.signal,
+    });
+
+    if (!res.ok) { onError(`HTTP ${res.status}`); return controller; }
+    const reader = res.body?.getReader();
+    if (!reader) { onError('No readable stream'); return controller; }
+
+    const decoder = new TextDecoder();
+    let buffer = '';
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed || !trimmed.startsWith('data: ')) continue;
+        const data = trimmed.slice(6);
+        if (data === '[DONE]') { onDone(); return controller; }
+        try {
+          const parsed = JSON.parse(data);
+          if (parsed.error) { onError(parsed.error); return controller; }
+          if (parsed.content) onChunk(parsed.content);
+        } catch { /* skip */ }
+      }
+    }
+    onDone();
+  } catch (err: any) {
+    if (err.name !== 'AbortError') onError(err.message || 'Stream failed');
+  }
+  return controller;
+}
+
+// SSE 流式调用 Chat 接口
+export async function streamChat(
+  message: string,
+  history: { role: 'user' | 'ai'; text: string }[],
+  onChunk: (text: string) => void,
+  onDone: () => void,
+  onError: (err: string) => void,
+): Promise<AbortController> {
+  const controller = new AbortController();
+  const token = localStorage.getItem('token');
+
+  try {
+    const res = await fetch(`${API_BASE}/ai-assist/chat`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ message, history }),
       signal: controller.signal,
     });
 
