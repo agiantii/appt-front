@@ -138,15 +138,23 @@ const SpaceDetail: React.FC = () => {
           className="group flex items-center hover:bg-white/[0.03] transition-colors py-2 px-4 cursor-pointer"
           style={{ paddingLeft: `${level * 24 + 16}px` }}
         >
+          {/* 展开/折叠按钮 */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleNode(node.id);
+            }}
+            className={`p-0.5 hover:bg-white/10 rounded transition-opacity mr-1 ${hasChildren ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+          >
+            {isExpanded ? <ChevronDown className="w-3.5 h-3.5 text-white/40" /> : <ChevronRight className="w-3.5 h-3.5 text-white/40" />}
+          </button>
+          
+          {/* 标题区域 - 点击跳转编辑页 */}
           <div 
             className="flex items-center gap-3 flex-1 min-w-0"
-            onClick={() => hasChildren ? toggleNode(node.id) : navigate(`/slide/${slideSpaceId}/${node.id}`)}
+            onClick={() => navigate(`/slide/${slideSpaceId}/${node.id}`)}
           >
-            {hasChildren ? (
-              isExpanded ? <ChevronDown className="w-3.5 h-3.5 text-white/40" /> : <ChevronRight className="w-3.5 h-3.5 text-white/40" />
-            ) : (
-              <FileText className="w-3.5 h-3.5 text-white/20" />
-            )}
+            <FileText className={`w-3.5 h-3.5 ${hasChildren ? 'text-white/40' : 'text-white/20'}`} />
             <span className={`text-sm ${hasChildren ? 'text-white/80 font-medium' : 'text-white/60'} truncate`}>
               {node.title}
             </span>
@@ -154,30 +162,28 @@ const SpaceDetail: React.FC = () => {
           </div>
           
           {/* 操作按钮 */}
-          {!hasChildren && (
-            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity mr-3">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  navigate(`/slide/${slideSpaceId}/${node.id}`);
-                }}
-                className="p-1.5 hover:bg-white/10 text-white/40 hover:text-white rounded transition-colors"
-                title="编辑"
-              >
-                <Pencil className="w-3.5 h-3.5" />
-              </button>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  navigate(`/slide/presentation/${node.id}`);
-                }}
-                className="p-1.5 hover:bg-white/10 text-white/40 hover:text-green-400 rounded transition-colors"
-                title="演示"
-              >
-                <Play className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          )}
+          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity mr-3">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate(`/slide/${slideSpaceId}/${node.id}`);
+              }}
+              className="p-1.5 hover:bg-white/10 text-white/40 hover:text-white rounded transition-colors"
+              title="编辑"
+            >
+              <Pencil className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate(`/slide/presentation/${node.id}`);
+              }}
+              className="p-1.5 hover:bg-white/10 text-white/40 hover:text-green-400 rounded transition-colors"
+              title="演示"
+            >
+              <Play className="w-3.5 h-3.5" />
+            </button>
+          </div>
           
           <div className="text-[11px] font-mono text-white/20 group-hover:text-white/40 transition-colors whitespace-nowrap">
             {new Date(node.updatedAt).toLocaleDateString()}
