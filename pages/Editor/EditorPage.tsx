@@ -437,7 +437,7 @@ const EditorPage: React.FC = () => {
     // Get initial content: from Yjs (collaborative) or currentSlide (local)
     const initialDoc = isCollaborativeMode 
       ? (yTextRef.current!.toString() || "")
-      : (currentSlide?.content || "");
+      : ("");
 
     // Check if user has edit permission
     const canEdit = userRole ? PERMISSIONS[userRole]?.includes('edit') : false;
