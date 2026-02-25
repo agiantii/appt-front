@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { Settings, Plus, Search, Filter, LayoutGrid, List, ArrowLeft, MoreVertical as MoreIcon, ChevronRight, ChevronDown, Share2, FolderOpen, FileText, Zap as ZapIcon, CheckCircle, AlertCircle, X, Pencil, Play } from 'lucide-react';
+import { Settings, Plus, Search, Filter, LayoutGrid, List, ArrowLeft, MoreVertical as MoreIcon, ChevronRight, ChevronDown, Share2, FolderOpen, FileText, Zap as ZapIcon, CheckCircle, AlertCircle, X, Pencil, Play, EditIcon } from 'lucide-react';
 import { spaceApi } from '../../api/space';
 import { slideApi } from '../../api/slide';
 import FileTree from '../../components/SpaceTree/FileTree';
@@ -306,22 +306,43 @@ const SpaceDetail: React.FC = () => {
           ) : (
             <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-10`}>
               {slides.filter(s => s.title.toLowerCase().includes(searchQuery.toLowerCase())).map(slide => (
-                <Link 
+                <div 
                   key={slide.id}
-                  to={`/slide/${slideSpaceId}/${slide.id}`}
-                  className={`group bg-[#0c0c0e] border border-white/5 rounded-[40px] overflow-hidden hover:border-white/20 transition-all flex flex-col shadow-lg hover:shadow-[0_40px_80px_-20px_rgba(0,0,0,0.6)] relative`}
+                  className={`group bg-[#0c0c0e] border border-white/5 rounded-[40px] overflow-hidden hover:border-white/20 transition-all flex flex-col shadow-lg hover:shadow-[0_40px_80px_-20px_rgba(0,0,0,0.6)] relative cursor-pointer`}
+                  onClick={() => navigate(`/slide/presentation/${slide.id}`)}
                 >
                   <div className="aspect-[16/10] bg-[#18181b] relative group-hover:bg-[#1c1c1f] transition-colors flex items-center justify-center overflow-hidden">
+                     {/* 更多按钮 - 点击跳转到编辑页 */}
                      <div className="absolute top-5 right-5 opacity-0 group-hover:opacity-100 transition-all duration-300 z-10 translate-y-2 group-hover:translate-y-0">
-                        <button className="p-3 bg-black/80 rounded-2xl backdrop-blur-xl border border-white/10 hover:bg-white hover:text-black transition-all" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
-                          <MoreIcon className="w-5 h-5" />
+                        <button 
+                          className="p-3 bg-black/80 rounded-2xl backdrop-blur-xl border border-white/10 hover:bg-white hover:text-black transition-all" 
+                          onClick={(e) => { 
+                            e.preventDefault(); 
+                            e.stopPropagation(); 
+                            navigate(`/slide/${slideSpaceId}/${slide.id}`);
+                          }}
+                          title="编辑"
+                        >
+                          <EditIcon className="w-5 h-5" />
                         </button>
                      </div>
-                     <div className="p-10 text-[6px] font-mono text-white/5 group-hover:text-white/10 transition-all duration-700 select-none scale-110 group-hover:scale-100">
-                       {slide.content.slice(0, 800)}
-                     </div>
+                     
+                     {/* 预览图或内容预览 */}
+                     {slide.previewUrl ? (
+                       <img 
+                         src={slide.previewUrl} 
+                         alt={slide.title}
+                         className="w-full h-full object-cover opacity-60 group-hover:opacity-80 transition-opacity"
+                       />
+                     ) : (
+                       <>
+                         <div className="p-10 text-[6px] font-mono text-white/5 group-hover:text-white/10 transition-all duration-700 select-none scale-110 group-hover:scale-100">
+                           {(slide.content || '').slice(0, 800)}
+                         </div>
+                         <ZapIcon className="absolute w-12 h-12 text-white/5 group-hover:text-white/10 transition-all group-hover:scale-110 group-hover:rotate-6" />
+                       </>
+                     )}
                      <div className="absolute inset-0 bg-gradient-to-t from-[#0c0c0e] via-transparent to-transparent opacity-40" />
-                     <ZapIcon className="absolute w-12 h-12 text-white/5 group-hover:text-white/10 transition-all group-hover:scale-110 group-hover:rotate-6" />
                   </div>
                   <div className="p-8">
                     <h3 className="font-black text-xl text-white/90 group-hover:text-white transition-colors truncate mb-4" title={slide.title}>{slide.title}</h3>
@@ -335,7 +356,7 @@ const SpaceDetail: React.FC = () => {
                       </div>
                     </div>
                   </div>
-                </Link>
+                </div>
               ))}
             </div>
           )}
