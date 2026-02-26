@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Sparkles, Check, X, Loader2, Type, Layout, Bug, RefreshCw, Image as ImageIcon, SendHorizonal } from 'lucide-react';
+import { Sparkles, Check, X, Loader2, Type, Layout, Bug, RefreshCw, Image as ImageIcon, SendHorizonal, RotateCcw } from 'lucide-react';
 import { streamInlineEdit, generateImage } from '../../../api/ai';
 
 // 斜杠命令定义
@@ -61,8 +61,12 @@ export const QuickActionWidget: React.FC<QuickActionWidgetProps> = ({
     setSelectedIndex(0);
   }, [filteredCommands.length]);
 
+  // 存储最后一次编辑指令用于重新生成
+  const lastInstructionRef = useRef<string>('');
+
   // 执行文本编辑指令（流式）
   const executeTextEdit = useCallback(async (instruction: string) => {
+    lastInstructionRef.current = instruction;
     setLoading(true);
     setResult('');
     setDone(false);
@@ -71,11 +75,18 @@ export const QuickActionWidget: React.FC<QuickActionWidgetProps> = ({
     const ctrl = await streamInlineEdit(
       { selectedText, instruction, fullContent },
       (chunk) => setResult(prev => prev + chunk),
-      () => { setLoading(false); setDone(true); },
-      (err) => { setLoading(false); setError(err); },
+      () => { setLoading(false); setDone(true); abortRef.current = null; },
+      (err) => { setLoading(false); setError(err); abortRef.current = null; },
     );
     abortRef.current = ctrl;
   }, [selectedText, fullContent]);
+
+  // 重新生成
+  const handleRegenerate = useCallback(() => {
+    if (lastInstructionRef.current) {
+      executeTextEdit(lastInstructionRef.current);
+    }
+  }, [executeTextEdit]);
 
   // 执行 AI 生图
   const executeImageGen = useCallback(async (prompt: string) => {
@@ -259,7 +270,7 @@ export const QuickActionWidget: React.FC<QuickActionWidgetProps> = ({
         </div>
       )}
 
-      {/* Accept / Reject */}
+      {/* Accept / Reject / Regenerate */}
       {(done || error) && (
         <div className="flex justify-end gap-2 px-3 pb-3">
           <button
@@ -269,12 +280,21 @@ export const QuickActionWidget: React.FC<QuickActionWidgetProps> = ({
             <X className="w-3 h-3" /> Reject
           </button>
           {done && result && (
-            <button
-              onClick={() => onAccept(result)}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-white bg-violet-500 hover:bg-violet-400 rounded-lg transition-colors font-medium"
-            >
-              <Check className="w-3 h-3" /> Accept
-            </button>
+            <>
+              <button
+                onClick={handleRegenerate}
+                disabled={loading}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-white/70 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg transition-colors disabled:opacity-50"
+              >
+                <RotateCcw className="w-3 h-3" /> Regenerate
+              </button>
+              <button
+                onClick={() => onAccept(result)}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-white bg-violet-500 hover:bg-violet-400 rounded-lg transition-colors font-medium"
+              >
+                <Check className="w-3 h-3" /> Accept
+              </button>
+            </>
           )}
         </div>
       )}

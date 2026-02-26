@@ -34,71 +34,104 @@ export async function streamInlineEdit(
 ): Promise<AbortController> {
   const controller = new AbortController();
   const token = localStorage.getItem('token');
+  console.log('[AI] streamInlineEdit started, controller created');
 
-  try {
-    const res = await fetch(`${API_BASE}/ai-assist/inline-edit`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      body: JSON.stringify(params),
-      signal: controller.signal,
-    });
+  (async () => {
+    try {
+      const res = await fetch(`${API_BASE}/ai-assist/inline-edit`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(params),
+        signal: controller.signal,
+      });
 
-    if (!res.ok) {
-      onError(`HTTP ${res.status}`);
-      return controller;
-    }
+      if (!res.ok) {
+        console.error('[AI] HTTP error:', res.status);
+        onError(`HTTP ${res.status}`);
+        return;
+      }
 
-    const reader = res.body?.getReader();
-    if (!reader) {
-      onError('No readable stream');
-      return controller;
-    }
+      const reader = res.body?.getReader();
+      if (!reader) {
+        console.error('[AI] No readable stream');
+        onError('No readable stream');
+        return;
+      }
 
-    const decoder = new TextDecoder();
-    let buffer = '';
+      const abortHandler = () => {
+        console.log('[AI] Abort signal received, canceling reader');
+        reader.cancel('User aborted').catch(() => {});
+      };
+      controller.signal.addEventListener('abort', abortHandler);
 
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let chunkCount = 0;
 
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop() || '';
-
-      for (const line of lines) {
-        const trimmed = line.trim();
-        if (!trimmed || !trimmed.startsWith('data: ')) continue;
-        const data = trimmed.slice(6);
-
-        if (data === '[DONE]') {
-          onDone();
-          return controller;
+      while (true) {
+        if (controller.signal.aborted) {
+          console.log('[AI] Loop detected abort signal, breaking');
+          break;
         }
+        const { done, value } = await reader.read();
+        if (controller.signal.aborted) {
+          console.log('[AI] Read completed but aborted, breaking');
+          break;
+        }
+        if (done) {
+          console.log('[AI] Stream done');
+          break;
+        }
+        chunkCount++;
+        console.log(`[AI] Received chunk #${chunkCount}, size: ${value?.length || 0}`);
 
-        try {
-          const parsed = JSON.parse(data);
-          if (parsed.error) {
-            onError(parsed.error);
-            return controller;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed || !trimmed.startsWith('data: ')) continue;
+          const data = trimmed.slice(6);
+
+          if (data === '[DONE]') {
+            console.log('[AI] Received [DONE]');
+            onDone();
+            return;
           }
-          if (parsed.content) {
-            onChunk(parsed.content);
+
+          try {
+            const parsed = JSON.parse(data);
+            if (parsed.error) {
+              console.error('[AI] Error in chunk:', parsed.error);
+              onError(parsed.error);
+              return;
+            }
+            if (parsed.content) {
+              onChunk(parsed.content);
+            }
+          } catch {
+            // skip malformed chunks
           }
-        } catch {
-          // skip malformed chunks
         }
       }
-    }
 
-    onDone();
-  } catch (err: any) {
-    if (err.name !== 'AbortError') {
-      onError(err.message || 'Stream failed');
+      controller.signal.removeEventListener('abort', abortHandler);
+      console.log('[AI] Stream completed normally');
+      onDone();
+    } catch (err: any) {
+      if (err.name === 'AbortError') {
+        console.log('[AI] AbortError caught, stream canceled');
+      } else {
+        console.error('[AI] Stream error:', err);
+        onError(err.message || 'Stream failed');
+      }
     }
-  }
+    console.log('[AI] streamInlineEdit ended');
+  })();
 
   return controller;
 }
@@ -112,46 +145,94 @@ export async function streamGenerateOutline(
 ): Promise<AbortController> {
   const controller = new AbortController();
   const token = localStorage.getItem('token');
+  console.log('[AI] streamGenerateOutline started, controller created');
 
-  try {
-    const res = await fetch(`${API_BASE}/ai-assist/generate-outline`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      body: JSON.stringify(params),
-      signal: controller.signal,
-    });
+  (async () => {
+    try {
+      const res = await fetch(`${API_BASE}/ai-assist/generate-outline`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(params),
+        signal: controller.signal,
+      });
 
-    if (!res.ok) { onError(`HTTP ${res.status}`); return controller; }
-    const reader = res.body?.getReader();
-    if (!reader) { onError('No readable stream'); return controller; }
+      if (!res.ok) {
+        console.error('[AI] HTTP error:', res.status);
+        onError(`HTTP ${res.status}`);
+        return;
+      }
+      const reader = res.body?.getReader();
+      if (!reader) {
+        console.error('[AI] No readable stream');
+        onError('No readable stream');
+        return;
+      }
 
-    const decoder = new TextDecoder();
-    let buffer = '';
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop() || '';
-      for (const line of lines) {
-        const trimmed = line.trim();
-        if (!trimmed || !trimmed.startsWith('data: ')) continue;
-        const data = trimmed.slice(6);
-        if (data === '[DONE]') { onDone(); return controller; }
-        try {
-          const parsed = JSON.parse(data);
-          if (parsed.error) { onError(parsed.error); return controller; }
-          if (parsed.content) onChunk(parsed.content);
-        } catch { /* skip */ }
+      const abortHandler = () => {
+        console.log('[AI] Abort signal received, canceling reader');
+        reader.cancel('User aborted').catch(() => {});
+      };
+      controller.signal.addEventListener('abort', abortHandler);
+
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let chunkCount = 0;
+      while (true) {
+        if (controller.signal.aborted) {
+          console.log('[AI] Loop detected abort signal, breaking');
+          break;
+        }
+        const { done, value } = await reader.read();
+        if (controller.signal.aborted) {
+          console.log('[AI] Read completed but aborted, breaking');
+          break;
+        }
+        if (done) {
+          console.log('[AI] Stream done');
+          break;
+        }
+        chunkCount++;
+        console.log(`[AI] Received chunk #${chunkCount}, size: ${value?.length || 0}`);
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed || !trimmed.startsWith('data: ')) continue;
+          const data = trimmed.slice(6);
+          if (data === '[DONE]') {
+            console.log('[AI] Received [DONE]');
+            onDone();
+            return;
+          }
+          try {
+            const parsed = JSON.parse(data);
+            if (parsed.error) {
+              console.error('[AI] Error in chunk:', parsed.error);
+              onError(parsed.error);
+              return;
+            }
+            if (parsed.content) onChunk(parsed.content);
+          } catch { /* skip */ }
+        }
+      }
+      controller.signal.removeEventListener('abort', abortHandler);
+      console.log('[AI] Stream completed normally');
+      onDone();
+    } catch (err: any) {
+      if (err.name === 'AbortError') {
+        console.log('[AI] AbortError caught, stream canceled');
+      } else {
+        console.error('[AI] Stream error:', err);
+        onError(err.message || 'Stream failed');
       }
     }
-    onDone();
-  } catch (err: any) {
-    if (err.name !== 'AbortError') onError(err.message || 'Stream failed');
-  }
+    console.log('[AI] streamGenerateOutline ended');
+  })();
+
   return controller;
 }
 
@@ -165,46 +246,96 @@ export async function streamChat(
 ): Promise<AbortController> {
   const controller = new AbortController();
   const token = localStorage.getItem('token');
+  console.log('[AI] streamChat started, controller created');
 
-  try {
-    const res = await fetch(`${API_BASE}/ai-assist/chat`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      body: JSON.stringify({ message, history }),
-      signal: controller.signal,
-    });
+  // 立即开始异步处理，不阻塞返回 controller
+  (async () => {
+    try {
+      const res = await fetch(`${API_BASE}/ai-assist/chat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ message, history }),
+        signal: controller.signal,
+      });
 
-    if (!res.ok) { onError(`HTTP ${res.status}`); return controller; }
-    const reader = res.body?.getReader();
-    if (!reader) { onError('No readable stream'); return controller; }
+      if (!res.ok) {
+        console.error('[AI] HTTP error:', res.status);
+        onError(`HTTP ${res.status}`);
+        return;
+      }
+      const reader = res.body?.getReader();
+      if (!reader) {
+        console.error('[AI] No readable stream');
+        onError('No readable stream');
+        return;
+      }
 
-    const decoder = new TextDecoder();
-    let buffer = '';
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop() || '';
-      for (const line of lines) {
-        const trimmed = line.trim();
-        if (!trimmed || !trimmed.startsWith('data: ')) continue;
-        const data = trimmed.slice(6);
-        if (data === '[DONE]') { onDone(); return controller; }
-        try {
-          const parsed = JSON.parse(data);
-          if (parsed.error) { onError(parsed.error); return controller; }
-          if (parsed.content) onChunk(parsed.content);
-        } catch { /* skip */ }
+      // 监听 abort 信号，主动取消 reader
+      const abortHandler = () => {
+        console.log('[AI] Abort signal received, canceling reader');
+        reader.cancel('User aborted').catch(() => {});
+      };
+      controller.signal.addEventListener('abort', abortHandler);
+
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let chunkCount = 0;
+      while (true) {
+        if (controller.signal.aborted) {
+          console.log('[AI] Loop detected abort signal, breaking');
+          break;
+        }
+        const { done, value } = await reader.read();
+        if (controller.signal.aborted) {
+          console.log('[AI] Read completed but aborted, breaking');
+          break;
+        }
+        if (done) {
+          console.log('[AI] Stream done');
+          break;
+        }
+        chunkCount++;
+        console.log(`[AI] Received chunk #${chunkCount}, size: ${value?.length || 0}`);
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed || !trimmed.startsWith('data: ')) continue;
+          const data = trimmed.slice(6);
+          if (data === '[DONE]') {
+            console.log('[AI] Received [DONE]');
+            onDone();
+            return;
+          }
+          try {
+            const parsed = JSON.parse(data);
+            if (parsed.error) {
+              console.error('[AI] Error in chunk:', parsed.error);
+              onError(parsed.error);
+              return;
+            }
+            if (parsed.content) onChunk(parsed.content);
+          } catch { /* skip */ }
+        }
+      }
+      controller.signal.removeEventListener('abort', abortHandler);
+      console.log('[AI] Stream completed normally');
+      onDone();
+    } catch (err: any) {
+      if (err.name === 'AbortError') {
+        console.log('[AI] AbortError caught, stream canceled');
+      } else {
+        console.error('[AI] Stream error:', err);
+        onError(err.message || 'Stream failed');
       }
     }
-    onDone();
-  } catch (err: any) {
-    if (err.name !== 'AbortError') onError(err.message || 'Stream failed');
-  }
+    console.log('[AI] streamChat ended');
+  })();
+
   return controller;
 }
 

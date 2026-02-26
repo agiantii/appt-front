@@ -696,7 +696,7 @@ const EditorPage: React.FC = () => {
       <div className="h-10 border-b border-white/5 flex items-center px-4 bg-[#09090b] overflow-x-auto whitespace-nowrap hide-scrollbar flex-shrink-0">
         <div className="flex items-center gap-2 bg-[#18181b] px-4 py-2 rounded-t-xl border-t border-x border-white/10 -mb-[1px]">
           <Files className="w-3.5 h-3.5 text-white/40" />
-          <span className="text-xs font-semibold text-white/90">{currentSlide?.title}.md</span>
+          <span className="text-xs font-semibold text-white/90">{currentSlide?.title}</span>
         </div>
       </div>
       <div className="flex-1 relative overflow-hidden flex flex-col">

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { ArrowRight, Sparkles, FileText, Loader2, Download, Palette, MessageSquarePlus } from 'lucide-react';
+import { ArrowRight, Sparkles, FileText, Loader2, Download, Palette, MessageSquarePlus, StopCircle } from 'lucide-react';
 import { streamGenerateOutline, streamChat } from '../../../api/ai';
 
 type PanelTab = 'chat' | 'outline';
@@ -58,6 +58,7 @@ const ChatView: React.FC<{
   const handleSendChat = useCallback(async () => {
     const trimmed = chatInput.trim();
     if (!trimmed || loading) return;
+    console.log('[AIPanel] Chat started');
 
     // 添加用户消息
     const newHistory = [...chatHistory, { role: 'user' as const, text: trimmed }];
@@ -81,9 +82,13 @@ const ChatView: React.FC<{
           return updated;
         });
       },
-      () => setLoading(false),
+      () => {
+        setLoading(false);
+        abortRef.current = null;
+      },
       (err) => {
         setLoading(false);
+        abortRef.current = null;
         setChatHistory(prev => {
           const updated = [...prev];
           const lastMsg = updated[updated.length - 1];
@@ -96,6 +101,26 @@ const ChatView: React.FC<{
     );
     abortRef.current = ctrl;
   }, [chatInput, chatHistory, loading]);
+
+  const handleStopChat = useCallback(() => {
+    console.log('[AIPanel] Stopping chat..., abortRef:', abortRef.current);
+    if (abortRef.current) {
+      abortRef.current.abort();
+      abortRef.current = null;
+      setLoading(false);
+      console.log('[AIPanel] Chat stopped');
+      setChatHistory(prev => {
+        const updated = [...prev];
+        const lastMsg = updated[updated.length - 1];
+        if (lastMsg && lastMsg.role === 'ai' && !lastMsg.text.trim()) {
+          lastMsg.text = '[Stopped by user]';
+        }
+        return updated;
+      });
+    } else {
+      console.log('[AIPanel] No abortRef, cannot stop');
+    }
+  }, []);
 
   return (
     <>
@@ -125,13 +150,23 @@ const ChatView: React.FC<{
             disabled={loading}
             className="bg-transparent text-xs w-full focus:outline-none px-3 disabled:opacity-50"
           />
-          <button
-            onClick={handleSendChat}
-            disabled={loading || !chatInput.trim()}
-            className="p-2 bg-white text-black rounded-xl hover:bg-white/90 transition-transform active:scale-95 disabled:opacity-50"
-          >
-            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRight className="w-4 h-4" />}
-          </button>
+          {loading ? (
+            <button
+              onClick={handleStopChat}
+              className="p-2 bg-red-500 text-white rounded-xl hover:bg-red-400 transition-transform active:scale-95"
+              title="Stop generation"
+            >
+              <StopCircle className="w-4 h-4" />
+            </button>
+          ) : (
+            <button
+              onClick={handleSendChat}
+              disabled={!chatInput.trim()}
+              className="p-2 bg-white text-black rounded-xl hover:bg-white/90 transition-transform active:scale-95 disabled:opacity-50"
+            >
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          )}
         </div>
       </div>
     </>
@@ -170,6 +205,7 @@ const OutlineView: React.FC<{
 
   const handleGenerate = useCallback(async () => {
     if (!topic.trim() || loading) return;
+    console.log('[AIPanel] Outline generation started');
     setLoading(true);
     setResult('');
     setDone(false);
@@ -178,11 +214,32 @@ const OutlineView: React.FC<{
     const ctrl = await streamGenerateOutline(
       { topic: topic.trim(), slideCount, fullContent, theme, requirements: requirements.trim() || undefined },
       (chunk) => setResult(prev => prev + chunk),
-      () => { setLoading(false); setDone(true); },
-      (err) => { setLoading(false); setError(err); },
+      () => {
+        setLoading(false);
+        setDone(true);
+        abortRef.current = null;
+      },
+      (err) => {
+        setLoading(false);
+        setError(err);
+        abortRef.current = null;
+      },
     );
     abortRef.current = ctrl;
   }, [topic, slideCount, fullContent, theme, requirements, loading]);
+
+  const handleStopGenerate = useCallback(() => {
+    console.log('[AIPanel] Stopping outline generation...');
+    if (abortRef.current) {
+      abortRef.current.abort();
+      abortRef.current = null;
+      setLoading(false);
+      console.log('[AIPanel] Outline generation stopped');
+      if (!result.trim()) {
+        setError('Generation stopped by user');
+      }
+    }
+  }, [result]);
 
   return (
     <div className="flex flex-col flex-1 overflow-hidden">
@@ -220,14 +277,24 @@ const OutlineView: React.FC<{
             className="w-10 bg-white/5 border border-white/10 rounded-md px-1 py-1 text-[10px] text-white/80 focus:outline-none focus:border-indigo-500/50 text-center"
             disabled={loading}
           />
-          <button
-            onClick={handleGenerate}
-            disabled={loading || !topic.trim()}
-            className="flex-shrink-0 flex items-center justify-center w-7 h-7 bg-indigo-500 text-white rounded-md hover:bg-indigo-400 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-            title="Generate"
-          >
-            {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <FileText className="w-3 h-3" />}
-          </button>
+          {loading ? (
+            <button
+              onClick={handleStopGenerate}
+              className="flex-shrink-0 flex items-center justify-center w-7 h-7 bg-red-500 text-white rounded-md hover:bg-red-400 transition-colors"
+              title="Stop generation"
+            >
+              <StopCircle className="w-3 h-3" />
+            </button>
+          ) : (
+            <button
+              onClick={handleGenerate}
+              disabled={!topic.trim()}
+              className="flex-shrink-0 flex items-center justify-center w-7 h-7 bg-indigo-500 text-white rounded-md hover:bg-indigo-400 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+              title="Generate"
+            >
+              <FileText className="w-3 h-3" />
+            </button>
+          )}
         </div>
 
         {/* 额外要求 */}
