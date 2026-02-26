@@ -14,8 +14,10 @@ export const slideApi = {
     api.post<any, ApiResponse<{ id: number; updatedAt: string }>>(`/slides/${id}/save`, { content }),
   move: (id: number, params: { parentId: number | null; targetId?: number; position?: 'before' | 'after' }) => 
     api.post<any, ApiResponse<Slide | Slide[]>>(`/slides/${id}/move`, params),
-  findRecent: (limit?: number) => 
-    api.get<any, ApiResponse<any[]>>('/slides/recent', { params: { limit } }),
+  findRecent: (params?: { page?: number; pageSize?: number }) => 
+    api.get<any, ApiResponse<{ items: any[]; total: number; page: number; pageSize: number }>>('/slides/recent', { params }),
+  findCollaborated: (params?: { page?: number; pageSize?: number }) => 
+    api.get<any, ApiResponse<{ items: any[]; total: number; page: number; pageSize: number }>>('/slides/shared', { params }),
   findOne: (id: number) => 
     api.get<any, ApiResponse<Slide>>(`/slides/detail/${id}`),
   search: (params: { keyword?: string; page?: number; pageSize?: number }) => 

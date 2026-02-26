@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState, useRef } from 'react';
-import { Plus, Clock, Star, Users, ArrowRight, BookOpen, Box, Zap, Sparkles, Search, ChevronDown, X, CheckCircle, AlertCircle } from 'lucide-react';
+import { Plus, Clock, Star, Users, ArrowRight, BookOpen, Box, Zap, Sparkles, Search, ChevronDown, X, CheckCircle, AlertCircle, Share2 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { slideApi } from '../../api/slide';
 import { spaceApi } from '../../api/space';
@@ -193,11 +193,27 @@ const CreateSlideModal: React.FC<CreateSlideModalProps> = ({ isOpen, onClose, sp
 
 const StartPage: React.FC = () => {
   const navigate = useNavigate();
+  
+  // Recent slides pagination
   const [recentSlides, setRecentSlides] = useState<any[]>([]);
+  const [recentPage, setRecentPage] = useState(1);
+  const [recentHasMore, setRecentHasMore] = useState(true);
+  const [recentLoading, setRecentLoading] = useState(false);
+  const recentContainerRef = useRef<HTMLDivElement>(null);
+  
+  // Shared slides pagination
+  const [sharedSlides, setSharedSlides] = useState<any[]>([]);
+  const [sharedPage, setSharedPage] = useState(1);
+  const [sharedHasMore, setSharedHasMore] = useState(true);
+  const [sharedLoading, setSharedLoading] = useState(false);
+  const sharedContainerRef = useRef<HTMLDivElement>(null);
+  
   const [spaces, setSpaces] = useState<SlideSpace[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
+  
+  const PAGE_SIZE = 6;
 
   const addToast = (message: string, type: 'success' | 'error') => {
     const id = Date.now();
@@ -208,13 +224,110 @@ const StartPage: React.FC = () => {
     setToasts(prev => prev.filter(t => t.id !== id));
   };
 
+  // Load recent slides
+  const loadRecentSlides = async (page: number, append: boolean = false) => {
+    if (recentLoading) return;
+    setRecentLoading(true);
+    try {
+      const res = await slideApi.findRecent({ page, pageSize: PAGE_SIZE });
+      if (res.statusCode === 0) {
+        const { items, total } = res.data;
+        setRecentSlides(prev => append ? [...prev, ...items] : items);
+        setRecentHasMore(recentSlides.length + items.length < total);
+        setRecentPage(page);
+      }
+    } finally {
+      setRecentLoading(false);
+    }
+  };
+
+  // Load shared slides
+  const loadSharedSlides = async (page: number, append: boolean = false) => {
+    if (sharedLoading) return;
+    setSharedLoading(true);
+    try {
+      const res = await slideApi.findCollaborated({ page, pageSize: PAGE_SIZE });
+      if (res.statusCode === 0) {
+        const { items, total } = res.data;
+        setSharedSlides(prev => append ? [...prev, ...items] : items);
+        setSharedHasMore(sharedSlides.length + items.length < total);
+        setSharedPage(page);
+      }
+    } finally {
+      setSharedLoading(false);
+    }
+  };
+
+  // Handle scroll for recent slides
+  const handleRecentScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const container = e.currentTarget;
+    const { scrollLeft, scrollWidth, clientWidth } = container;
+    if (scrollLeft + clientWidth >= scrollWidth - 100 && recentHasMore && !recentLoading) {
+      loadRecentSlides(recentPage + 1, true);
+    }
+  };
+
+  // Handle scroll for shared slides
+  const handleSharedScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const container = e.currentTarget;
+    const { scrollLeft, scrollWidth, clientWidth } = container;
+    if (scrollLeft + clientWidth >= scrollWidth - 100 && sharedHasMore && !sharedLoading) {
+      loadSharedSlides(sharedPage + 1, true);
+    }
+  };
+
+  // Setup wheel event listeners with passive: false
+  useEffect(() => {
+    const recentContainer = recentContainerRef.current;
+    const sharedContainer = sharedContainerRef.current;
+
+    const handleWheel = (e: WheelEvent, container: HTMLDivElement, loadMore: () => void, hasMore: boolean, loading: boolean) => {
+      // 检查容器是否可以横向滚动
+      const canScrollLeft = container.scrollLeft > 0;
+      const canScrollRight = container.scrollLeft < container.scrollWidth - container.clientWidth - 1;
+      
+      // 当纵向滚动时，转换为横向滚动
+      if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+        // 如果容器可以横向滚动，阻止页面滚动
+        if (canScrollLeft || canScrollRight) {
+          e.preventDefault();
+          container.scrollLeft += e.deltaY;
+          
+          // 检查是否滚动到底部，加载更多
+          const { scrollLeft, scrollWidth, clientWidth } = container;
+          if (scrollLeft + clientWidth >= scrollWidth - 100 && hasMore && !loading) {
+            loadMore();
+          }
+        }
+      }
+    };
+
+    const recentHandler = (e: WheelEvent) => handleWheel(e, recentContainer!, () => loadRecentSlides(recentPage + 1, true), recentHasMore, recentLoading);
+    const sharedHandler = (e: WheelEvent) => handleWheel(e, sharedContainer!, () => loadSharedSlides(sharedPage + 1, true), sharedHasMore, sharedLoading);
+
+    if (recentContainer) {
+      recentContainer.addEventListener('wheel', recentHandler, { passive: false });
+    }
+    if (sharedContainer) {
+      sharedContainer.addEventListener('wheel', sharedHandler, { passive: false });
+    }
+
+    return () => {
+      if (recentContainer) {
+        recentContainer.removeEventListener('wheel', recentHandler);
+      }
+      if (sharedContainer) {
+        sharedContainer.removeEventListener('wheel', sharedHandler);
+      }
+    };
+  }, [recentPage, recentHasMore, recentLoading, sharedPage, sharedHasMore, sharedLoading]);
+
   useEffect(() => {
     userApi.getCurrentUser().then(res => {
       if (res.statusCode === 0) setCurrentUser(res.data);
     });
-    slideApi.findRecent(3).then(res => {
-      if (res.statusCode === 0) setRecentSlides(res.data);
-    });
+    loadRecentSlides(1);
+    loadSharedSlides(1);
     spaceApi.findAll({ pageSize: 100 }).then(res => {
       if (res.statusCode === 0) setSpaces(res.data.items);
     });
@@ -309,18 +422,23 @@ const StartPage: React.FC = () => {
             <h2 className="text-3xl font-black tracking-tight">Recent Artifacts</h2>
           </div>
           <button className="text-[10px] font-black uppercase tracking-widest text-white/20 hover:text-white flex items-center gap-2 transition-all">
-            History <ArrowRight className="w-3 h-3" />
+            MORE <ArrowRight className="w-3 h-3" />
           </button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div 
+          ref={recentContainerRef}
+          onScroll={handleRecentScroll}
+          className="flex gap-6 overflow-x-auto pb-4 scrollbar-hide"
+          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+        >
           {recentSlides.map(slide => (
             <Link 
               key={`slide-${slide.id}`} 
               to={`/slide/${slide.slideSpace?.id}/${slide.id}`}
-              className="bg-[#0c0c0e] border border-white/5 p-6 rounded-[32px] hover:border-white/20 transition-all group flex flex-col shadow-lg"
+              className="flex-shrink-0 w-[320px] bg-[#0c0c0e] border border-white/5 p-5 rounded-[24px] hover:border-white/20 transition-all group flex flex-col shadow-lg"
             >
-              <div className="aspect-video bg-[#18181b] rounded-2xl mb-6 overflow-hidden flex items-center justify-center relative">
+              <div className="aspect-video bg-[#18181b] rounded-xl mb-4 overflow-hidden flex items-center justify-center relative">
                 {slide.previewUrl ? (
                   <img 
                     src={slide.previewUrl} 
@@ -333,18 +451,90 @@ const StartPage: React.FC = () => {
                   </div>
                 )}
                 <div className="absolute inset-0 bg-gradient-to-t from-[#0c0c0e] via-transparent to-transparent opacity-60" />
-                <Zap className="absolute bottom-4 right-4 w-6 h-6 text-white/5 group-hover:text-white/40 transition-all group-hover:rotate-12" />
+                <Zap className="absolute bottom-3 right-3 w-5 h-5 text-white/5 group-hover:text-white/40 transition-all group-hover:rotate-12" />
               </div>
-              <h4 className="font-bold text-xl group-hover:text-white transition-colors">{slide.title}</h4>
-              <div className="flex items-center justify-between mt-4">
+              <h4 className="font-bold text-lg group-hover:text-white transition-colors truncate">{slide.title}</h4>
+              <div className="flex items-center justify-between mt-3">
                 <span className="text-[10px] font-bold text-white/20 uppercase tracking-widest">
-                  Edited {new Date(slide.updatedAt).toLocaleDateString()}
+                  {slide.slideSpace?.name}
+                </span>
+                <span className="text-[10px] font-bold text-white/20 uppercase tracking-widest">
+                  {new Date(slide.updatedAt).toLocaleDateString()}
                 </span>
               </div>
             </Link>
           ))}
+          {recentLoading && (
+            <div className="flex-shrink-0 w-[320px] flex items-center justify-center">
+              <div className="w-8 h-8 border-2 border-white/20 border-t-white/60 rounded-full animate-spin" />
+            </div>
+          )}
         </div>
       </section>
+
+      {/* Shared Collaborations */}
+      {sharedSlides.length > 0 && (
+        <section className="space-y-8">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="p-2 bg-white/5 rounded-xl border border-white/10">
+                <Share2 className="w-5 h-5 text-white/60" />
+              </div>
+              <h2 className="text-3xl font-black tracking-tight">Shared With Me</h2>
+            </div>
+          </div>
+
+          <div 
+            ref={sharedContainerRef}
+            onScroll={handleSharedScroll}
+            className="flex gap-6 overflow-x-auto pb-4 scrollbar-hide"
+            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+          >
+            {sharedSlides.map(slide => (
+              <Link
+                key={`shared-${slide.id}`}
+                to={`/slide/${slide.slideSpace?.id}/${slide.id}`}
+                className="flex-shrink-0 w-[320px] bg-[#0c0c0e] border border-white/5 p-5 rounded-[24px] hover:border-white/20 transition-all group flex flex-col shadow-lg"
+              >
+                <div className="aspect-video bg-[#18181b] rounded-xl mb-4 overflow-hidden flex items-center justify-center relative">
+                  {slide.previewUrl ? (
+                    <img
+                      src={slide.previewUrl}
+                      alt={slide.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+                  ) : (
+                    <div className="p-6 text-[8px] text-white/5 font-mono opacity-50 select-none group-hover:scale-110 transition-transform duration-700">
+                      {slide.title}
+                    </div>
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#0c0c0e] via-transparent to-transparent opacity-60" />
+                  <div className="absolute top-3 left-3 px-2 py-1 bg-white/10 backdrop-blur-sm rounded-md">
+                    <span className="text-[10px] font-bold text-white/70 uppercase tracking-wider">{slide.role}</span>
+                  </div>
+                </div>
+                <h4 className="font-bold text-lg group-hover:text-white transition-colors truncate">{slide.title}</h4>
+                <div className="flex items-center gap-2 mt-2">
+                  <span className="text-xs text-white/40">by {slide.owner?.username}</span>
+                </div>
+                <div className="flex items-center justify-between mt-3">
+                  <span className="text-[10px] font-bold text-white/20 uppercase tracking-widest">
+                    {slide.slideSpace?.name}
+                  </span>
+                  <span className="text-[10px] font-bold text-white/20 uppercase tracking-widest">
+                    {new Date(slide.updatedAt).toLocaleDateString()}
+                  </span>
+                </div>
+              </Link>
+            ))}
+            {sharedLoading && (
+              <div className="flex-shrink-0 w-[320px] flex items-center justify-center">
+                <div className="w-8 h-8 border-2 border-white/20 border-t-white/60 rounded-full animate-spin" />
+              </div>
+            )}
+          </div>
+        </section>
+      )}
 
       {/* Knowledge Spaces */}
       <section className="space-y-8">
