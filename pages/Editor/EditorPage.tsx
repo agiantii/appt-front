@@ -249,8 +249,13 @@ const EditorPage: React.FC = () => {
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Ctrl+Alt+B: toggle preview
+      if ((e.ctrlKey || e.metaKey) && e.altKey && e.key.toLowerCase() === 'b') {
+        e.preventDefault();
+        setPreviewOpen(prev => !prev);
+      }
       // Ctrl+B: toggle sidebar
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
+      if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === 'b') {
         e.preventDefault();
         setSidebarOpen(prev => !prev);
       }
