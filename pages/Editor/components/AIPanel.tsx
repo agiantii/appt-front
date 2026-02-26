@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { ArrowRight, Sparkles, FileText, Loader2, Download, Palette, MessageSquarePlus, StopCircle, Upload, X } from 'lucide-react';
+import { ArrowRight, Sparkles, FileText, Loader2, Download, Palette, MessageSquarePlus, StopCircle, Upload, X, Copy, Check } from 'lucide-react';
 import { streamGenerateOutline, streamChat, ReferenceFile } from '../../../api/ai';
 
 type PanelTab = 'chat' | 'outline';
@@ -8,6 +8,17 @@ interface AIPanelProps {
   onInsertContent?: (content: string) => void;
   fullContent?: string;
 }
+
+// 全局状态缓存，用于在路由不变时保留内容
+const globalCache = {
+  chatHistory: [] as { role: 'user' | 'ai'; text: string }[],
+  outlineTopic: '',
+  outlineSlideCount: 5,
+  outlineTheme: 'default',
+  outlineRequirements: '',
+  outlineResult: '',
+  outlineReferenceFiles: [] as ReferenceFile[],
+};
 
 export const AIPanel: React.FC<AIPanelProps> = ({
   onInsertContent, fullContent,
@@ -44,11 +55,16 @@ export const AIPanel: React.FC<AIPanelProps> = ({
 const ChatView: React.FC<{
   fullContent?: string;
 }> = ({ fullContent }) => {
-  const [chatHistory, setChatHistory] = useState<{ role: 'user' | 'ai'; text: string }[]>([]);
+  const [chatHistory, setChatHistory] = useState<{ role: 'user' | 'ai'; text: string }[]>(globalCache.chatHistory);
   const [chatInput, setChatInput] = useState('');
   const [loading, setLoading] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // 同步到全局缓存
+  useEffect(() => {
+    globalCache.chatHistory = chatHistory;
+  }, [chatHistory]);
 
   // 自动滚动到底部
   useEffect(() => {
@@ -122,6 +138,18 @@ const ChatView: React.FC<{
     }
   }, []);
 
+  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
+
+  const handleCopyMessage = useCallback(async (text: string, index: number) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedIndex(index);
+      setTimeout(() => setCopiedIndex(null), 1500);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  }, []);
+
   return (
     <>
       <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
@@ -132,10 +160,19 @@ const ChatView: React.FC<{
           </div>
         )}
         {chatHistory.map((msg, i) => (
-          <div key={i} className={`p-4 rounded-2xl text-xs leading-relaxed transition-all ${msg.role === 'ai' ? 'bg-white/5 border border-white/5 text-white/70 backdrop-blur-sm' : 'bg-white/10 ml-6 text-white border border-white/10 shadow-lg shadow-white/5'}`}>
+          <div key={i} className={`group relative p-4 rounded-2xl text-xs leading-relaxed transition-all ${msg.role === 'ai' ? 'bg-white/5 border border-white/5 text-white/70 backdrop-blur-sm' : 'bg-white/10 ml-6 text-white border border-white/10 shadow-lg shadow-white/5'}`}>
             {msg.text || (loading && i === chatHistory.length - 1 && msg.role === 'ai' ? (
               <span className="inline-block w-1.5 h-3.5 bg-indigo-400 animate-pulse align-middle" />
             ) : msg.text)}
+            {msg.text && !loading && (
+              <button
+                onClick={() => handleCopyMessage(msg.text, i)}
+                className="absolute top-2 right-2 p-1.5 rounded-md bg-white/5 hover:bg-white/10 text-white/40 hover:text-white/70 opacity-0 group-hover:opacity-100 transition-all"
+                title="复制"
+              >
+                {copiedIndex === i ? <Check className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3" />}
+              </button>
+            )}
           </div>
         ))}
         <div ref={messagesEndRef} />
@@ -188,18 +225,28 @@ const OutlineView: React.FC<{
   onInsertContent?: (content: string) => void;
   fullContent?: string;
 }> = ({ onInsertContent, fullContent }) => {
-  const [topic, setTopic] = useState('');
-  const [slideCount, setSlideCount] = useState(5);
-  const [theme, setTheme] = useState('default');
-  const [requirements, setRequirements] = useState('');
-  const [result, setResult] = useState('');
+  const [topic, setTopic] = useState(globalCache.outlineTopic);
+  const [slideCount, setSlideCount] = useState(globalCache.outlineSlideCount);
+  const [theme, setTheme] = useState(globalCache.outlineTheme);
+  const [requirements, setRequirements] = useState(globalCache.outlineRequirements);
+  const [result, setResult] = useState(globalCache.outlineResult);
   const [loading, setLoading] = useState(false);
-  const [done, setDone] = useState(false);
+  const [done, setDone] = useState(!!globalCache.outlineResult);
   const [error, setError] = useState('');
-  const [referenceFiles, setReferenceFiles] = useState<ReferenceFile[]>([]);
+  const [referenceFiles, setReferenceFiles] = useState<ReferenceFile[]>(globalCache.outlineReferenceFiles);
   const abortRef = useRef<AbortController | null>(null);
   const resultRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // 同步到全局缓存
+  useEffect(() => {
+    globalCache.outlineTopic = topic;
+    globalCache.outlineSlideCount = slideCount;
+    globalCache.outlineTheme = theme;
+    globalCache.outlineRequirements = requirements;
+    globalCache.outlineResult = result;
+    globalCache.outlineReferenceFiles = referenceFiles;
+  }, [topic, slideCount, theme, requirements, result, referenceFiles]);
 
   useEffect(() => {
     if (resultRef.current) resultRef.current.scrollTop = resultRef.current.scrollHeight;
@@ -303,6 +350,19 @@ const OutlineView: React.FC<{
       if (!result.trim()) {
         setError('Generation stopped by user');
       }
+    }
+  }, [result]);
+
+  const [outlineCopied, setOutlineCopied] = useState(false);
+
+  const handleCopyOutline = useCallback(async () => {
+    if (!result) return;
+    try {
+      await navigator.clipboard.writeText(result);
+      setOutlineCopied(true);
+      setTimeout(() => setOutlineCopied(false), 1500);
+    } catch (err) {
+      console.error('Failed to copy:', err);
     }
   }, [result]);
 
@@ -435,10 +495,19 @@ const OutlineView: React.FC<{
         )}
         {error && <p className="text-xs text-red-400 p-2">{error}</p>}
         {result && (
-          <pre className="text-xs text-white/80 whitespace-pre-wrap break-words font-mono leading-relaxed">
-            {result}
-            {loading && <span className="inline-block w-1.5 h-3.5 bg-indigo-400 animate-pulse ml-0.5 align-middle" />}
-          </pre>
+          <div className="relative group">
+            <button
+              onClick={handleCopyOutline}
+              className="absolute top-0 right-0 p-1.5 rounded-md bg-white/10 hover:bg-white/20 text-white/50 hover:text-white/80 opacity-0 group-hover:opacity-100 transition-all z-10"
+              title="复制全部"
+            >
+              {outlineCopied ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5" />}
+            </button>
+            <pre className="text-xs text-white/80 whitespace-pre-wrap break-words font-mono leading-relaxed pr-8">
+              {result}
+              {loading && <span className="inline-block w-1.5 h-3.5 bg-indigo-400 animate-pulse ml-0.5 align-middle" />}
+            </pre>
+          </div>
         )}
       </div>
 
