@@ -100,35 +100,35 @@ const PresentationPage: React.FC = () => {
     setToasts(prev => prev.filter(t => t.id !== id));
   };
 
-  // 初始化加载
+  // 初始化加载 - 先获取 presentation，成功后再获取 comments
   useEffect(() => {
     if (slideId) {
       setLoading(true);
-      Promise.all([
-        slideApi.findOne(Number(slideId)),
-        commentApi.findAll(Number(slideId))
-      ]).then(([slideRes, commentsRes]) => {
-        if (slideRes.statusCode === 0) {
-          setSlide(slideRes.data);
-          // 获取 preview
-          fetchPreview();
-        }
-        if (commentsRes.statusCode === 0) {
-          setComments(commentsRes.data.items);
-        }
+      // 首先获取 presentation
+      fetchPreview().then(() => {
+        // presentation 获取成功后，再获取 comments
+        return commentApi.findAll(Number(slideId)).then((commentsRes) => {
+          if (commentsRes.statusCode === 0) {
+            setComments(commentsRes.data.items);
+          }
+        });
       }).finally(() => setLoading(false));
     }
   }, [slideId]);
 
-  // 获取 preview
+  // 获取 presentation Url 
   const fetchPreview = async () => {
     if (!slideId) return;
     setIsLoading(true);
     setError(null);
     try {
-      const res = await slideApi.preview(Number(slideId), 'build');
-      if (res.statusCode === 0 && res.data?.url) {
-        setPreviewUrl(res.data.url);
+      const res = await slideApi.getPresentation(Number(slideId));
+      if (res.statusCode === 0 && res.data?.buildPath) {
+        if (res.data.isBuild) {
+          setPreviewUrl(res.data.buildPath);
+        } else {
+          setError('文档尚未构建，请先构建文档');
+        }
       } else if (res.statusCode === 403 || res.message?.includes('无权') || res.message?.includes('权限')) {
         // 无权访问
         setPermissionDeniedModalOpen(true);
@@ -280,14 +280,6 @@ const PresentationPage: React.FC = () => {
       </div>
     );
   }
-  
-  if (!slide) {
-    return (
-      <div className="flex h-screen bg-black items-center justify-center text-white/40">
-        幻灯片未找到
-      </div>
-    );
-  }
 
   return (
     <div className="flex h-screen bg-black overflow-hidden select-none font-sans">
@@ -372,7 +364,7 @@ const PresentationPage: React.FC = () => {
         {/* 头部信息 */}
         <div className="p-6 border-b border-white/5">
           <div className="flex items-center justify-between mb-4">
-            <h1 className="text-lg font-bold text-white/90 truncate">{slide.title}</h1>
+            <h1 className="text-lg font-bold text-white/90 truncate">讨论区</h1>
           </div>
         </div>
 

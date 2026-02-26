@@ -779,7 +779,7 @@ const EditorPage: React.FC = () => {
             slideId={slideId}
             slideSpaceId={slideSpaceId}
             onOpenCollaboratorModal={() => setCollaboratorModalOpen(true)}
-            onSlideUpdate={(updatedSlide) => setCurrentSlide(updatedSlide)}
+
           />
           <CollaboratorModal
             isOpen={collaboratorModalOpen}

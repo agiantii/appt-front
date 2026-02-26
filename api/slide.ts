@@ -28,6 +28,8 @@ export const slideApi = {
     api.post<any, ApiResponse<{ slideId: number; buildPath: string; isBuild: boolean }>>(`/slides/${id}/build`),
   stopDev: (id: number) => 
     api.delete<any, ApiResponse<null>>(`/slides/${id}/dev/stop`),
+  getPresentation: (id: number) => 
+    api.get<any, ApiResponse<{ slideId: number; buildPath: string; isBuild: boolean }>>(`/slides/${id}/presentation`),
   like: (slideId: number) => 
     api.post<any, ApiResponse<null>>(`/slides/${slideId}/like`),
   unlike: (slideId: number) => 

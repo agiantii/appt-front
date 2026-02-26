@@ -18,7 +18,6 @@ interface EditorHeaderProps {
   slideId: string | undefined;
   slideSpaceId: string | undefined;
   onOpenCollaboratorModal: () => void;
-  onSlideUpdate?: (slide: Slide) => void;
 }
 
 const EditorHeader: React.FC<EditorHeaderProps> = ({ 
@@ -32,8 +31,7 @@ const EditorHeader: React.FC<EditorHeaderProps> = ({
   onTogglePreview,
   slideId,
   slideSpaceId,
-  onOpenCollaboratorModal,
-  onSlideUpdate
+  onOpenCollaboratorModal
 }) => {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [isPublic, setIsPublic] = useState(currentSlide?.isPublic ?? false);
@@ -121,8 +119,7 @@ const EditorHeader: React.FC<EditorHeaderProps> = ({
         allowComment,
         previewUrl
       });
-      if (res.statusCode === 0 && onSlideUpdate) {
-        onSlideUpdate(res.data);
+      if (res.statusCode === 0) {
         showToast('设置保存成功', 'success');
       } else {
         showToast(res.message || '保存失败', 'error');
