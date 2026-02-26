@@ -210,6 +210,10 @@ export const QuickActionWidget: React.FC<QuickActionWidgetProps> = ({
             onKeyDown={handleKeyDown}
             placeholder="输入指令或 / 查看命令..."
             disabled={loading || done}
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="off"
+            spellCheck="false"
             className="flex-1 bg-transparent px-3 py-2 text-xs text-white/90 placeholder:text-white/30 outline-none disabled:opacity-50"
           />
           <button

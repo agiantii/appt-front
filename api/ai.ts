@@ -86,7 +86,6 @@ export async function streamInlineEdit(
           break;
         }
         chunkCount++;
-        console.log(`[AI] Received chunk #${chunkCount}, size: ${value?.length || 0}`);
 
         buffer += decoder.decode(value, { stream: true });
         const lines = buffer.split('\n');
@@ -195,7 +194,6 @@ export async function streamGenerateOutline(
           break;
         }
         chunkCount++;
-        console.log(`[AI] Received chunk #${chunkCount}, size: ${value?.length || 0}`);
         buffer += decoder.decode(value, { stream: true });
         const lines = buffer.split('\n');
         buffer = lines.pop() || '';
@@ -298,7 +296,6 @@ export async function streamChat(
           break;
         }
         chunkCount++;
-        console.log(`[AI] Received chunk #${chunkCount}, size: ${value?.length || 0}`);
         buffer += decoder.decode(value, { stream: true });
         const lines = buffer.split('\n');
         buffer = lines.pop() || '';

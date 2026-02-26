@@ -17,6 +17,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { slideApi } from '../../api/slide';
+import { InputModal } from '../../components/Common/Modal';
 import { snippetApi } from '../../api/snippet';
 import { userApi } from '../../api/user';
 import { versionApi } from '../../api/version';
@@ -176,6 +177,7 @@ const EditorPage: React.FC = () => {
   const [permissionDeniedModalOpen, setPermissionDeniedModalOpen] = useState(false);
   const [permissionCountdown, setPermissionCountdown] = useState(2);
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const [isTitleEditing, setIsTitleEditing] = useState(false);
 
   // Ctrl+I AI 助手状态
   const [quickActionOpen, setQuickActionOpen] = useState(false);
@@ -694,7 +696,10 @@ const EditorPage: React.FC = () => {
   const editorCenter = (
     <div className="flex-1 flex flex-col min-w-0 bg-[#0c0c0e] overflow-hidden">
       <div className="h-10 border-b border-white/5 flex items-center px-4 bg-[#09090b] overflow-x-auto whitespace-nowrap hide-scrollbar flex-shrink-0">
-        <div className="flex items-center gap-2 bg-[#18181b] px-4 py-2 rounded-t-xl border-t border-x border-white/10 -mb-[1px]">
+        <div 
+          className="flex items-center gap-2 bg-[#18181b] px-4 py-2 rounded-t-xl border-t border-x border-white/10 -mb-[1px] cursor-pointer hover:bg-[#1c1c1f] transition-colors"
+          onClick={() => setIsTitleEditing(true)}
+        >
           <Files className="w-3.5 h-3.5 text-white/40" />
           <span className="text-xs font-semibold text-white/90">{currentSlide?.title}</span>
         </div>
@@ -814,6 +819,33 @@ const EditorPage: React.FC = () => {
       </div>
 
       <ToastContainer toasts={toasts} onRemove={removeToast} />
+
+      {/* 标题编辑弹窗 */}
+      <InputModal
+        isOpen={isTitleEditing}
+        onClose={() => setIsTitleEditing(false)}
+        onConfirm={async (newTitle) => {
+          if (!slideId || !newTitle.trim()) return;
+          try {
+            const res = await slideApi.update(Number(slideId), { title: newTitle.trim() });
+            if (res.statusCode === 0) {
+              setCurrentSlide(prev => prev ? { ...prev, title: newTitle.trim() } : null);
+              setSlides(prev => prev.map(s => s.id === Number(slideId) ? { ...s, title: newTitle.trim() } : s));
+              addToast('标题修改成功', 'success');
+            } else {
+              addToast(res.message || '修改失败', 'error');
+            }
+          } catch (err) {
+            addToast('修改失败', 'error');
+          }
+          setIsTitleEditing(false);
+        }}
+        title="修改文档标题"
+        placeholder="输入新标题..."
+        defaultValue={currentSlide?.title || ''}
+        confirmText="确认"
+        cancelText="取消"
+      />
 
       {/* Ctrl+I AI 助手浮动面板 */}
       {quickActionOpen && (
