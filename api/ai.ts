@@ -7,12 +7,18 @@ export interface InlineEditParams {
   cursorLine?: number;
 }
 
+export interface ReferenceFile {
+  name: string;
+  content: string;
+}
+
 export interface GenerateOutlineParams {
   topic: string;
   slideCount?: number;
   fullContent?: string;
   theme?: string;
   requirements?: string;
+  referenceFiles?: ReferenceFile[];
 }
 
 export interface SuggestAltParams {

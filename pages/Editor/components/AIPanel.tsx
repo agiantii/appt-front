@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { ArrowRight, Sparkles, FileText, Loader2, Download, Palette, MessageSquarePlus, StopCircle } from 'lucide-react';
-import { streamGenerateOutline, streamChat } from '../../../api/ai';
+import { ArrowRight, Sparkles, FileText, Loader2, Download, Palette, MessageSquarePlus, StopCircle, Upload, X } from 'lucide-react';
+import { streamGenerateOutline, streamChat, ReferenceFile } from '../../../api/ai';
 
 type PanelTab = 'chat' | 'outline';
 
@@ -196,8 +196,10 @@ const OutlineView: React.FC<{
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState('');
+  const [referenceFiles, setReferenceFiles] = useState<ReferenceFile[]>([]);
   const abortRef = useRef<AbortController | null>(null);
   const resultRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (resultRef.current) resultRef.current.scrollTop = resultRef.current.scrollHeight;
@@ -212,7 +214,7 @@ const OutlineView: React.FC<{
     setError('');
 
     const ctrl = await streamGenerateOutline(
-      { topic: topic.trim(), slideCount, fullContent, theme, requirements: requirements.trim() || undefined },
+      { topic: topic.trim(), slideCount, fullContent, theme, requirements: requirements.trim() || undefined, referenceFiles: referenceFiles.length > 0 ? referenceFiles : undefined },
       (chunk) => setResult(prev => prev + chunk),
       () => {
         setLoading(false);
@@ -226,7 +228,70 @@ const OutlineView: React.FC<{
       },
     );
     abortRef.current = ctrl;
-  }, [topic, slideCount, fullContent, theme, requirements, loading]);
+  }, [topic, slideCount, fullContent, theme, requirements, loading, referenceFiles]);
+
+  const processFiles = useCallback(async (files: FileList | null) => {
+    if (!files) return;
+
+    const newFiles: ReferenceFile[] = [];
+    for (const file of Array.from(files) as File[]) {
+      if (!file.name.endsWith('.md') && !file.name.endsWith('.txt')) {
+        continue;
+      }
+      try {
+        const content = await file.text();
+        newFiles.push({ name: file.name, content });
+      } catch (err) {
+        console.error('Failed to read file:', file.name, err);
+      }
+    }
+
+    if (newFiles.length > 0) {
+      setReferenceFiles(prev => [...prev, ...newFiles]);
+    }
+  }, []);
+
+  const handleFileUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    await processFiles(e.target.files);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  }, [processFiles]);
+
+  const removeReferenceFile = useCallback((index: number) => {
+    setReferenceFiles(prev => prev.filter((_, i) => i !== index));
+  }, []);
+
+  const handleDrop = useCallback(async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    await processFiles(e.dataTransfer.files);
+  }, [processFiles]);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  }, []);
+
+  const handlePaste = useCallback(async (e: React.ClipboardEvent) => {
+    const items = e.clipboardData.items;
+    const files: File[] = [];
+
+    for (const item of Array.from(items) as DataTransferItem[]) {
+      if (item.kind === 'file') {
+        const file = item.getAsFile();
+        if (file && (file.name.endsWith('.md') || file.name.endsWith('.txt'))) {
+          files.push(file);
+        }
+      }
+    }
+
+    if (files.length > 0) {
+      const dataTransfer = new DataTransfer();
+      files.forEach(f => dataTransfer.items.add(f));
+      await processFiles(dataTransfer.files);
+    }
+  }, [processFiles]);
 
   const handleStopGenerate = useCallback(() => {
     console.log('[AIPanel] Stopping outline generation...');
@@ -299,15 +364,64 @@ const OutlineView: React.FC<{
 
         {/* 额外要求 */}
         <div className="flex items-start gap-1.5">
-          <MessageSquarePlus className="w-3 h-3 text-white/30 mt-1 flex-shrink-0" />
-          <input
+          <MessageSquarePlus className="w-3 h-3 text-white/30 mt-1.5 flex-shrink-0" />
+          <textarea
             value={requirements}
             onChange={(e) => setRequirements(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleGenerate()}
             placeholder="额外要求（可选）..."
-            className="flex-1 min-w-0 bg-white/5 border border-white/10 rounded-md px-2 py-1 text-[10px] text-white/90 focus:outline-none focus:border-indigo-500/50 placeholder:text-white/25"
+            rows={2}
+            className="flex-1 min-w-0 bg-white/5 border border-white/10 rounded-md px-2 py-1.5 text-[10px] text-white/90 focus:outline-none focus:border-indigo-500/50 placeholder:text-white/25 resize-none"
             disabled={loading}
           />
+        </div>
+
+        {/* 参考文件上传 */}
+        <div
+          className="mt-1"
+          onDrop={handleDrop}
+          onDragOver={handleDragOver}
+          onPaste={handlePaste}
+        >
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".md,.txt"
+            multiple
+            onChange={handleFileUpload}
+            className="hidden"
+            disabled={loading}
+          />
+          <div
+            onClick={() => fileInputRef.current?.click()}
+            className="border border-dashed border-white/20 rounded-md px-3 py-4 text-center cursor-pointer hover:border-indigo-500/50 hover:bg-white/5 transition-all"
+          >
+            <Upload className="w-4 h-4 text-white/40 mx-auto mb-1.5" />
+            <p className="text-[10px] text-white/50">
+              点击上传、拖拽或粘贴 .md / .txt 文件
+            </p>
+            <p className="text-[9px] text-white/30 mt-0.5">
+              支持多文件，作为 AI 生成参考
+            </p>
+          </div>
+          {referenceFiles.length > 0 && (
+            <div className="mt-2 space-y-1">
+              {referenceFiles.map((file, index) => (
+                <div key={index} className="flex items-center gap-1.5 text-[10px] bg-white/5 rounded px-2 py-1">
+                  <FileText className="w-3 h-3 text-indigo-400 flex-shrink-0" />
+                  <span className="text-white/60 truncate flex-1" title={file.name}>
+                    {file.name}
+                  </span>
+                  <button
+                    onClick={() => removeReferenceFile(index)}
+                    disabled={loading}
+                    className="text-white/30 hover:text-red-400 transition-colors disabled:opacity-50"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
