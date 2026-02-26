@@ -1,16 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { History, RotateCcw, GitCommit } from 'lucide-react';
+import { History, RotateCcw, GitCommit, GitCompare } from 'lucide-react';
+import * as Diff from 'diff';
 import { Version } from '../../../types';
 import { versionApi } from '../../../api/version';
-import { InputModal, ConfirmModal } from '../../../components/Common/Modal';
+import { InputModal, ConfirmModal, Modal } from '../../../components/Common/Modal';
 
 interface VersionsPanelProps {
   slideId?: string;
+  currentContent?: string;
   onVersionRollback?: (content: string) => void;
 }
 
 export const VersionsPanel: React.FC<VersionsPanelProps> = ({
   slideId,
+  currentContent,
   onVersionRollback,
 }) => {
   const [versions, setVersions] = useState<Version[]>([]);
@@ -18,6 +21,9 @@ export const VersionsPanel: React.FC<VersionsPanelProps> = ({
   const [showVersionModal, setShowVersionModal] = useState(false);
   const [versionToRollback, setVersionToRollback] = useState<Version | null>(null);
   const [rollbackMessage, setRollbackMessage] = useState('');
+  const [compareVersion, setCompareVersion] = useState<Version | null>(null);
+  const [diffResult, setDiffResult] = useState<Diff.Change[]>([]);
+  const [isLoadingDiff, setIsLoadingDiff] = useState(false);
 
   useEffect(() => {
     if (slideId) {
@@ -73,6 +79,45 @@ export const VersionsPanel: React.FC<VersionsPanelProps> = ({
     }
   };
 
+  const handleCompare = async (version: Version) => {
+    if (!currentContent || !slideId) return;
+    setIsLoadingDiff(true);
+    setCompareVersion(version);
+    try {
+      const res = await versionApi.findOne(Number(slideId), version.id);
+      if (res.statusCode === 0) {
+        const changes = Diff.diffLines(currentContent, res.data.content);
+        setDiffResult(changes);
+      }
+    } catch (err) {
+      console.error('Failed to load version content:', err);
+    } finally {
+      setIsLoadingDiff(false);
+    }
+  };
+
+  const renderDiffContent = () => {
+    return diffResult.map((part, index) => {
+      const colorClass = part.added
+        ? 'bg-green-500/20 text-green-300'
+        : part.removed
+        ? 'bg-red-500/20 text-red-300'
+        : 'text-white/60';
+      const prefix = part.added ? '+' : part.removed ? '-' : ' ';
+      const value = part.value || '';
+      return (
+        <div key={index} className={`${colorClass} font-mono text-xs whitespace-pre-wrap`}>
+          {value.split('\n').map((line, i) => (
+            <div key={i} className="px-2 py-0.5">
+              {line && <span className="select-none opacity-50 mr-2">{prefix}</span>}
+              {line}
+            </div>
+          ))}
+        </div>
+      );
+    });
+  };
+
   return (
     <>
       <div className="flex flex-col h-full">
@@ -107,13 +152,22 @@ export const VersionsPanel: React.FC<VersionsPanelProps> = ({
                     {version.creatorName} • {new Date(version.createdAt).toLocaleDateString()}
                   </div>
                 </div>
-                <button
-                  onClick={() => setVersionToRollback(version)}
-                  className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-white/10 rounded text-white/40 hover:text-white transition-all"
-                  title="回滚到此版本"
-                >
-                  <RotateCcw className="w-3.5 h-3.5" />
-                </button>
+                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                  <button
+                    onClick={() => handleCompare(version)}
+                    className="p-1.5 hover:bg-white/10 rounded text-white/40 hover:text-white transition-all"
+                    title="对比版本"
+                  >
+                    <GitCompare className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={() => setVersionToRollback(version)}
+                    className="p-1.5 hover:bg-white/10 rounded text-white/40 hover:text-white transition-all"
+                    title="回滚到此版本"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
             ))
           )}
@@ -142,6 +196,36 @@ export const VersionsPanel: React.FC<VersionsPanelProps> = ({
         cancelText="取消"
         type="warning"
       />
+
+      <Modal
+        isOpen={!!compareVersion}
+        onClose={() => {
+          setCompareVersion(null);
+          setDiffResult([]);
+        }}
+        title={compareVersion ? `版本对比 - v${compareVersion.versionNumber}` : '版本对比'}
+        size="lg"
+      >
+        <div className="space-y-3">
+          <div className="flex items-center gap-4 text-xs text-white/50">
+            <div className="flex items-center gap-1.5">
+              <div className="w-3 h-3 bg-red-500/20 rounded" />
+              <span>当前内容 (删除)</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <div className="w-3 h-3 bg-green-500/20 rounded" />
+              <span>版本内容 (新增)</span>
+            </div>
+          </div>
+          <div className="max-h-[400px] overflow-y-auto bg-[#0c0c0e] rounded-lg border border-white/10">
+            {isLoadingDiff ? (
+              <div className="text-center py-8 text-white/30 text-xs">加载中...</div>
+            ) : (
+              renderDiffContent()
+            )}
+          </div>
+        </div>
+      </Modal>
     </>
   );
 };

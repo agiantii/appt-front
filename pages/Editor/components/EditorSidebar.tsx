@@ -80,6 +80,7 @@ const EditorSidebar: React.FC<EditorSidebarProps> = ({
             {activeTab === 'git' && (
               <VersionsPanel
                 slideId={slideId}
+                currentContent={fullContent}
                 onVersionRollback={onVersionRollback}
               />
             )}
