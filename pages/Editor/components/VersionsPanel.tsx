@@ -86,7 +86,7 @@ export const VersionsPanel: React.FC<VersionsPanelProps> = ({
     try {
       const res = await versionApi.findOne(Number(slideId), version.id);
       if (res.statusCode === 0) {
-        const changes = Diff.diffLines(currentContent, res.data.content);
+        const changes = Diff.diffLines(res.data.content, currentContent);
         setDiffResult(changes);
       }
     } catch (err) {
