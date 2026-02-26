@@ -194,6 +194,11 @@ const CreateSlideModal: React.FC<CreateSlideModalProps> = ({ isOpen, onClose, sp
 const StartPage: React.FC = () => {
   const navigate = useNavigate();
   
+  // Search state
+  const [searchKeyword, setSearchKeyword] = useState('');
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  
   // Recent slides pagination
   const [recentSlides, setRecentSlides] = useState<any[]>([]);
   const [recentPage, setRecentPage] = useState(1);
@@ -222,6 +227,28 @@ const StartPage: React.FC = () => {
 
   const removeToast = (id: number) => {
     setToasts(prev => prev.filter(t => t.id !== id));
+  };
+
+  // Handle search
+  const handleSearch = async (keyword: string) => {
+    setSearchKeyword(keyword);
+    if (!keyword.trim()) {
+      setSearchResults([]);
+      setIsSearching(false);
+      return;
+    }
+    
+    setIsSearching(true);
+    try {
+      const res = await slideApi.searchMySlides({ keyword: keyword.trim(), page: 1, pageSize: 20 });
+      if (res.statusCode === 0) {
+        setSearchResults(res.data.items);
+      }
+    } catch (err) {
+      addToast('Search failed', 'error');
+    } finally {
+      setIsSearching(false);
+    }
   };
 
   // Load recent slides
@@ -370,6 +397,84 @@ const StartPage: React.FC = () => {
         </button>
       </header>
 
+      {/* Search Bar */}
+      <section className="space-y-6">
+        <div className="relative">
+          <div className="relative">
+            <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-white/30" />
+            <input
+              type="text"
+              value={searchKeyword}
+              onChange={(e) => handleSearch(e.target.value)}
+              placeholder="Search your slides..."
+              className="w-full bg-[#0c0c0e] border border-white/10 rounded-[20px] pl-14 pr-5 py-4 text-sm text-white/90 placeholder:text-white/30 focus:outline-none focus:border-white/30 focus:ring-1 focus:ring-white/10 transition-all"
+            />
+            {isSearching && (
+              <div className="absolute right-5 top-1/2 -translate-y-1/2">
+                <div className="w-4 h-4 border-2 border-white/20 border-t-white/60 rounded-full animate-spin" />
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Search Results */}
+        {searchKeyword && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-bold text-white/70">
+                {searchResults.length > 0 ? `Found ${searchResults.length} results` : 'No results found'}
+              </h3>
+              <button 
+                onClick={() => {
+                  setSearchKeyword('');
+                  setSearchResults([]);
+                }}
+                className="text-xs text-white/40 hover:text-white transition-colors"
+              >
+                Clear search
+              </button>
+            </div>
+            
+            {searchResults.length > 0 && (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {searchResults.map(slide => (
+                  <Link
+                    key={`search-${slide.id}`}
+                    to={`/slide/${slide.slideSpaceId}/${slide.id}`}
+                    className="bg-[#0c0c0e] border border-white/5 p-5 rounded-[24px] hover:border-white/20 transition-all group flex flex-col shadow-lg"
+                  >
+                    <div className="aspect-video bg-[#18181b] rounded-xl mb-4 overflow-hidden flex items-center justify-center relative">
+                      {slide.previewUrl ? (
+                        <img
+                          src={slide.previewUrl}
+                          alt={slide.title}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        />
+                      ) : (
+                        <div className="p-6 text-[8px] text-white/5 font-mono opacity-50 select-none group-hover:scale-110 transition-transform duration-700">
+                          {slide.title}
+                        </div>
+                      )}
+                      <div className="absolute inset-0 bg-gradient-to-t from-[#0c0c0e] via-transparent to-transparent opacity-60" />
+                      <Zap className="absolute bottom-3 right-3 w-5 h-5 text-white/5 group-hover:text-white/40 transition-all group-hover:rotate-12" />
+                    </div>
+                    <h4 className="font-bold text-lg group-hover:text-white transition-colors truncate">{slide.title}</h4>
+                    <div className="flex items-center justify-between mt-3">
+                      <span className="text-[10px] font-bold text-white/20 uppercase tracking-widest">
+                        {slide.slideSpace?.name}
+                      </span>
+                      <span className="text-[10px] font-bold text-white/20 uppercase tracking-widest">
+                        {new Date(slide.updatedAt).toLocaleDateString()}
+                      </span>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </section>
+
       <CreateSlideModal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
@@ -378,7 +483,7 @@ const StartPage: React.FC = () => {
       />
 
       {/* Shortcuts - High Visibility */}
-      <section className="grid grid-cols-1 md:grid-cols-3 gap-8">
+      {/* <section className="grid grid-cols-1 md:grid-cols-3 gap-8">
         <div className="group bg-gradient-to-br from-white/[0.08] to-transparent border border-white/10 p-10 rounded-[40px] hover:border-white/20 transition-all cursor-pointer relative overflow-hidden shadow-2xl">
           <div className="absolute -right-4 -top-4 w-32 h-32 bg-white/5 rounded-full blur-3xl group-hover:bg-white/10 transition-all" />
           <div className="w-16 h-16 bg-white/10 rounded-[20px] flex items-center justify-center mb-8 group-hover:scale-110 transition-transform shadow-xl shadow-black/40">
@@ -397,7 +502,7 @@ const StartPage: React.FC = () => {
           <h3 className="text-2xl font-black mb-2">AI Architect</h3>
           <p className="text-white/40 text-sm font-medium leading-relaxed">Describe your idea and let AI generate a full presentation.</p>
           <div className="mt-8 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-white/20 group-hover:text-white transition-colors">
-             Query Gemini <ArrowRight className="w-3 h-3" />
+             Query AI <ArrowRight className="w-3 h-3" />
           </div>
         </div>
         <div className="group bg-gradient-to-br from-white/[0.08] to-transparent border border-white/10 p-10 rounded-[40px] hover:border-white/20 transition-all cursor-pointer relative overflow-hidden shadow-2xl">
@@ -410,7 +515,7 @@ const StartPage: React.FC = () => {
              Open Local <ArrowRight className="w-3 h-3" />
           </div>
         </div>
-      </section>
+      </section> */}
 
       {/* Recent Activity */}
       <section className="space-y-8">
