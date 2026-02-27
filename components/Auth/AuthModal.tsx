@@ -229,7 +229,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose, onLogin }) => {
               {loading ? 'Processing...' : (mode === 'login' ? 'Sign In' : 'Sign Up')}
             </button>
 
-            <div className="relative my-6">
+            {/* <div className="relative my-6">
               <div className="absolute inset-0 flex items-center">
                 <div className="w-full border-t border-white/10"></div>
               </div>
@@ -241,7 +241,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose, onLogin }) => {
             <button className="w-full bg-white/5 border border-white/10 text-white flex items-center justify-center gap-2 py-2.5 rounded-lg hover:bg-white/10 transition-colors">
               <Github className="w-5 h-5" />
               Github
-            </button>
+            </button> */}
           </div>
         </div>
 
