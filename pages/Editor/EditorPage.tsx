@@ -234,6 +234,22 @@ const EditorPage: React.FC = () => {
             }, 1000);
           }
         }
+      })
+      .catch(err => {
+         // 未登录，直接重定向
+        if(err.status === 403)
+          addToast('未登录，无法访问', 'error');
+          setPermissionDeniedModalOpen(true);
+            // Countdown and redirect
+            let count = 2;
+            const timer = setInterval(() => {
+              count -= 1;
+              setPermissionCountdown(count);
+              if (count <= 0) {
+                clearInterval(timer);
+                navigate('/');
+              }
+            }, 1000);
       });
     }
     snippetApi.findAll().then(res => {
