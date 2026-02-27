@@ -259,15 +259,15 @@ const EditorPage: React.FC = () => {
         e.preventDefault();
         setSidebarOpen(prev => !prev);
       }
+      // Ctrl+Shift+S: save and create version
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        handleSaveAndVersionRef.current?.();
+      }
       // Ctrl+S: save
       if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 's') {
         e.preventDefault();
         handleSaveRef.current?.();
-      }
-      // Ctrl+Shift+S: save and create version
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 's') {
-        e.preventDefault();
-        handleSaveAndVersionRef.current?.();
       }
     };
     window.addEventListener('keydown', handleKeyDown);

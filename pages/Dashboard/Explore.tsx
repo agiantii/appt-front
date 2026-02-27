@@ -94,9 +94,9 @@ const ExplorePage: React.FC = () => {
   }, [filter, searchKeyword]);
 
   const categories = [
-    { id: 'slide', label: 'Slide Templates', icon: BookOpen },
-    { id: 'theme', label: 'System Themes', icon: Palette },
-    { id: 'plugin', label: 'Advanced Plugins', icon: Box },
+    { id: 'slide', label: 'Slide', icon: BookOpen },
+    { id: 'theme', label: 'Theme', icon: Palette },
+    { id: 'plugin', label: 'Plugins', icon: Box },
   ];
 
   return (
