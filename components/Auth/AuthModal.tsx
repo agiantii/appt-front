@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { X, Mail, Lock, Github, User as UserIcon } from 'lucide-react';
+import { X, Mail, Lock, Github, User as UserIcon, KeyRound } from 'lucide-react';
 import { userApi } from '../../api/user';
 
 interface AuthModalProps {
@@ -13,6 +13,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose, onLogin }) => {
   const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [registrationCode, setRegistrationCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -29,7 +30,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose, onLogin }) => {
           setError(res.message);
         }
       } else {
-        const res = await userApi.register({ username, email, password });
+        const res = await userApi.register({ username, email, password, registrationCode });
         if (res.statusCode === 0) {
           setMode('login');
           setEmail(username);
@@ -79,18 +80,36 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose, onLogin }) => {
               </div>
             )}
             <div className="space-y-2">
-              <label className="text-sm font-medium text-white/70">Email address</label>
+              <label className="text-sm font-medium text-white/70">
+                {mode === 'login' ? 'Username or Email' : 'Email address'}
+              </label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
                 <input 
-                  type="email" 
+                  type={mode === 'login' ? 'text' : 'email'}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="name@example.com"
+                  placeholder={mode === 'login' ? 'Enter username or email' : 'name@example.com'}
                   className="w-full bg-white/5 border border-white/10 rounded-lg py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-white/20 transition-all"
                 />
               </div>
             </div>
+
+            {mode === 'register' && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-white/70">Registration Code</label>
+                <div className="relative">
+                  <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
+                  <input 
+                    type="text" 
+                    value={registrationCode}
+                    onChange={(e) => setRegistrationCode(e.target.value)}
+                    placeholder="Enter registration code"
+                    className="w-full bg-white/5 border border-white/10 rounded-lg py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-white/20 transition-all"
+                  />
+                </div>
+              </div>
+            )}
 
             <div className="space-y-2">
               <label className="text-sm font-medium text-white/70">Password</label>
