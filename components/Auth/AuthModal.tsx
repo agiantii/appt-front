@@ -1,7 +1,9 @@
 
-import React, { useState } from 'react';
-import { X, Mail, Lock, Github, User as UserIcon, KeyRound } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Mail, Lock, Github, User as UserIcon, KeyRound, RefreshCw } from 'lucide-react';
 import { userApi } from '../../api/user';
+import { captchaApi, CaptchaData } from '../../api/captcha';
+import { useToast } from '../Common/Toast';
 
 interface AuthModalProps {
   onClose: () => void;
@@ -9,37 +11,99 @@ interface AuthModalProps {
 }
 
 const AuthModal: React.FC<AuthModalProps> = ({ onClose, onLogin }) => {
+  const { addToast } = useToast();
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [registrationCode, setRegistrationCode] = useState('');
+  const [captcha, setCaptcha] = useState<CaptchaData | null>(null);
+  const [captchaAnswer, setCaptchaAnswer] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [captchaLoading, setCaptchaLoading] = useState(false);
+
+  // 加载验证码
+  const loadCaptcha = async () => {
+    setCaptchaLoading(true);
+    try {
+      const data = await captchaApi.generate();
+      setCaptcha(data);
+      setCaptchaAnswer('');
+      setError('');
+    } catch (err: any) {
+      const errorMsg = err.response?.data?.message || '验证码加载失败';
+      setError(errorMsg);
+      addToast(errorMsg, 'error');
+    } finally {
+      setCaptchaLoading(false);
+    }
+  };
+
+  // 初始加载验证码
+  useEffect(() => {
+    loadCaptcha();
+  }, []);
 
   const handleSubmit = async () => {
+    if (!captcha) {
+      const msg = '请先加载验证码';
+      setError(msg);
+      addToast(msg, 'error');
+      return;
+    }
+    
+    if (!captchaAnswer.trim()) {
+      const msg = '请输入验证码';
+      setError(msg);
+      addToast(msg, 'error');
+      return;
+    }
+
     setLoading(true);
     setError('');
     try {
       if (mode === 'login') {
-        const res = await userApi.login({ username: email, password });
+        const res = await userApi.login({ 
+          username: email, 
+          password,
+          captchaId: captcha.id,
+          captchaAnswer: captchaAnswer.trim()
+        });
         if (res.statusCode === 0) {
+          addToast(res.message || '登录成功', 'success');
           localStorage.setItem('token', res.data.token);
           onLogin(res.data.token);
         } else {
           setError(res.message);
+          addToast(res.message, 'error');
+          loadCaptcha();
         }
       } else {
-        const res = await userApi.register({ username, email, password, registrationCode });
+        const res = await userApi.register({ 
+          username, 
+          email, 
+          password, 
+          registrationCode,
+          captchaId: captcha.id,
+          captchaAnswer: captchaAnswer.trim()
+        });
         if (res.statusCode === 0) {
+          addToast(res.message || '注册成功，请登录', 'success');
           setMode('login');
           setEmail(username);
+          loadCaptcha();
         } else {
           setError(res.message);
+          addToast(res.message, 'error');
+          loadCaptcha();
         }
       }
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Authentication failed');
+      const errorMsg = err.response?.data?.message || 'Authentication failed';
+      setError(errorMsg);
+      addToast(errorMsg, 'error');
+      loadCaptcha();
     } finally {
       setLoading(false);
     }
@@ -122,6 +186,38 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose, onLogin }) => {
                   placeholder="••••••••"
                   className="w-full bg-white/5 border border-white/10 rounded-lg py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-white/20 transition-all"
                 />
+              </div>
+            </div>
+
+            {/* 验证码 */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-white/70">
+                {captcha?.type === 'math' ? '计算题' : '验证码'}
+              </label>
+              <div className="flex gap-2">
+                <div className="flex-1 relative">
+                  <input 
+                    type="text" 
+                    value={captchaAnswer}
+                    onChange={(e) => setCaptchaAnswer(e.target.value)}
+                    placeholder={captcha?.type === 'math' ? '请输入答案' : '请输入字符'}
+                    className="w-full bg-white/5 border border-white/10 rounded-lg py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-white/20 transition-all"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="bg-white/5 border border-white/10 rounded-lg py-2.5 px-4 text-sm font-mono min-w-[120px] flex items-center justify-center">
+                    {captchaLoading ? '加载中...' : captcha?.question || '-'}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={loadCaptcha}
+                    disabled={captchaLoading}
+                    className="p-2.5 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 transition-colors disabled:opacity-50"
+                    title="刷新验证码"
+                  >
+                    <RefreshCw className={`w-4 h-4 ${captchaLoading ? 'animate-spin' : ''}`} />
+                  </button>
+                </div>
               </div>
             </div>
 
