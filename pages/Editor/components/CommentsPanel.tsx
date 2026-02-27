@@ -4,6 +4,7 @@ import { Comment } from '../../../types';
 import { commentApi } from '../../../api/comment';
 import { ConfirmModal } from '../../../components/Common/Modal';
 import { CommentTree } from './CommentTree';
+import { useToast } from '../../../components/Common/Toast';
 
 interface CommentsPanelProps {
   slideId?: string;
@@ -14,6 +15,7 @@ export const CommentsPanel: React.FC<CommentsPanelProps> = ({
   slideId,
   currentUser,
 }) => {
+  const { addToast } = useToast();
   const [comments, setComments] = useState<Comment[]>([]);
   const [isLoadingComments, setIsLoadingComments] = useState(false);
   const [commentInput, setCommentInput] = useState('');
@@ -60,9 +62,14 @@ export const CommentsPanel: React.FC<CommentsPanelProps> = ({
             return next;
           });
         }
+        addToast('Comment posted successfully', 'success');
         setReplyTo(null);
       }
+      else{
+        addToast(res.message, 'error');
+      }
     } catch (err) {
+      addToast('Failed to post comment', 'error');
       console.error('Failed to post comment:', err);
     }
   };
