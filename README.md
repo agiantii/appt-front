@@ -1,6 +1,4 @@
-<div align="center">
-<img width="1200" height="475" alt="APPT Banner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+
 
 # APPT Front - AI 驱动的幻灯片协作编辑平台
 
