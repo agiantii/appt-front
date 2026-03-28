@@ -50,7 +50,7 @@
 - **多人在线编辑**：基于 Yjs + Hocuspocus 的 OT 算法
 - **实时光标追踪**：查看协作者的编辑位置
 - **在线状态显示**：实时展示协作者列表
-<video controls src="assets/v1.mkv" title="Title"></video>
+<video controls src="assets/v1.mp4" title="Title"></video>
 ### 🔐 权限与安全管理
 - **角色权限控制**：Owner / Editor / Commenter / Viewer
 - **JWT 认证**：安全的用户身份验证
