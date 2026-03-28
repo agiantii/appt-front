@@ -240,7 +240,7 @@ const FileTree: React.FC<FileTreeProps> = ({ data, slideSpaceId, onSelect, onUpd
     // 计算放置位置
     if (element && targetId !== null) {
       const rect = element.getBoundingClientRect();
-      const y = e.clientY - rect.top;
+      const y = e.clientY - rect.top; 
       const height = rect.height;
       if (y < height * 0.25) {
         setDropPosition('before');

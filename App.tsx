@@ -54,7 +54,7 @@ const App: React.FC = () => {
         {/* Space and Editor Routes */}
         <Route path="/slide/:slideSpaceId" element={<SpaceDetail />} />
         <Route path="/slide/:slideSpaceId/settings/*" element={<SpaceSettings />} />
-        <Route path="/slide/:slideSpaceId/:slideId" element={<EditorPage />} />
+        <Route path="/slide/:slideSpaceId/:slideId" element={<EditorPage />}  />
         
         {/* Presentation */}
         <Route path="/slide/presentation/:slideId" element={<PresentationPage />} />

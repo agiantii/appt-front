@@ -6,43 +6,73 @@
 
 ## ✨ 核心功能
 
+### 简洁工作台
+- **简洁工作台**：快速开始，高效创作
+- **快捷功能**：集成了常用功能，快速上手
+![alt text](image.png)
 ### 🎨 专业幻灯片编辑器
 - **CodeMirror 6 驱动**：流畅的 Markdown 编辑体验
 - **实时预览**：Dev/Build 双模式即时预览
+- ![alt text](image-1.png)
 - **语法高亮**：支持 Markdown、HTML、CSS、JavaScript
-- **智能大纲**：自动生成幻灯片目录结构
-- **拖拽排序**：可视化调整幻灯片顺序
+- **可单向同步大纲**：点击大纲节点，编辑器与preview窗口同步到对应位置
+- **代码片段**：支持插入可复用的代码块、公式、图表等
+- ![alt text](image-2.png)
+- **可调整的预览窗口**: 调节各个窗口的大小
+- **`Ctrl + v`**: 插入图片
+- **快捷键呼出/隐藏**：
+  - `Ctrl + K`呼出/隐藏 左侧菜单
+  - `Ctrl + alt + K`呼出/隐藏 右侧preview
+  - `Ctrl + I ` 呼出/隐藏 AI内联辅助
 
-### 🤖 AI 智能辅助
-- **AI 内容生成**：根据主题自动生成幻灯片内容
-- **智能建议**：提供排版和设计建议
-- **AI 生图**：集成 Gemini AI 图像生成能力
-- **代码片段推荐**：智能推荐可复用代码块
 
-### 👥 实时协作
-- **多人在线编辑**：基于 Yjs + Hocuspocus 的 OT 算法
-- **实时光标追踪**：查看协作者的编辑位置
-- **在线状态显示**：实时展示协作者列表
-- **评论系统**：针对特定内容添加评论和讨论
 
-### 🔐 权限与安全管理
-- **角色权限控制**：Owner / Editor / Commenter / Viewer
-- **JWT 认证**：安全的用户身份验证
-- **文档可见性**：公开/私有文档灵活控制
-- **协作成员管理**：邀请和管理团队成员
-
-### 📚 版本控制
-- **版本历史**：自动保存每次修改记录
-- **版本对比**：查看不同版本间的差异
-- **一键回滚**：快速恢复到历史版本
-- **提交消息**：为重要版本添加说明
-
+### 评论功能
+- **评论功能**：对幻灯片内容添加评论和讨论
+   ![alt text](image-3.png)
 ### 🗂️ 知识库管理
 - **SlideSpace 空间**：按项目或主题组织幻灯片
 - **文档结构拖拽**：支持拖拽调整文档顺序
 - **层级结构**：支持父子文档树形结构
 - **标签分类**：灵活的文档分类系统
 - **全局搜索**：快速定位目标文档
+![alt text](image-5.png)
+![alt text](image-6.png)
+![alt text](image-9.png)
+### 🤖 AI 智能辅助
+- **AI 内容生成**：根据主题自动生成幻灯片内容
+- **智能建议**：提供排版和设计建议
+- **AI 生图**：集成  AI 图像生成能力
+![alt text](image-4.png)
+![alt text](image-10.png)
+![alt text](image-11.png)
+### 👥 实时协作
+- **多人在线编辑**：基于 Yjs + Hocuspocus 的 OT 算法
+- **实时光标追踪**：查看协作者的编辑位置
+- **在线状态显示**：实时展示协作者列表
+<video controls src="2026-03-28 14-08-22.mkv" title="Title"></video>
+### 🔐 权限与安全管理
+- **角色权限控制**：Owner / Editor / Commenter / Viewer
+- **JWT 认证**：安全的用户身份验证
+- **文档可见性**：公开/私有文档灵活控制
+- **协作成员管理**：邀请和管理团队成员
+  ![alt text](image-7.png)
+权限配置
+```ts
+export const PERMISSIONS: Record<SlideRole, string[]> = {
+  owner: ['read', 'comment', 'edit', 'view_history', 'manage', 'delete'],
+  editor: ['read', 'comment', 'edit', 'view_history'],
+  commenter: ['read', 'comment', 'view_history'],
+  viewer: ['read', 'view_history'],
+};
+```
+
+### 📚 版本控制
+- **版本历史**：自动保存每次修改记录
+- **版本对比**：查看不同版本间的差异
+- **一键回滚**：快速恢复到历史版本
+- **提交消息**：为重要版本添加说明
+![alt text](image-8.png)
 
 ## 🛠️ 技术栈
 
@@ -114,6 +144,171 @@ appt-front/
 ├── index.tsx               # 渲染入口
 └── vite.config.ts          # Vite 配置文件
 ```
+## 数据库设计
+
+### ER 图
+
+```mermaid
+erDiagram
+    users {
+        bigint id PK
+        varchar username UK
+        varchar email UK
+        varchar password_hash
+        varchar avatar_url
+        tinyint state
+        datetime created_at
+        datetime updated_at
+        enum role
+        bigint registration_code_id FK
+    }
+
+    slide_spaces {
+        bigint id PK
+        varchar name
+        bigint owner_id FK
+        tinyint is_public
+        datetime created_at
+        datetime updated_at
+    }
+
+    slides {
+        bigint id PK
+        varchar title
+        longtext content
+        bigint slide_space_id FK
+        bigint parent_id FK
+        tinyint allow_comment
+        bigint created_by
+        tinyint is_public
+        tinyint is_build
+        varchar preview_url
+        datetime created_at
+        datetime updated_at
+    }
+
+    slide_versions {
+        bigint id PK
+        bigint slide_id FK
+        int version_number
+        longtext content
+        varchar commit_msg
+        bigint created_by FK
+        datetime created_at
+    }
+
+    slide_comments {
+        bigint id PK
+        bigint slide_id FK
+        bigint user_id FK
+        text content
+        varchar path
+        bigint reply_id FK
+        datetime created_at
+    }
+
+    slide_user_roles {
+        bigint id PK
+        bigint slide_id FK
+        bigint user_id FK
+        enum role
+        datetime created_at
+    }
+
+    snippets {
+        bigint id PK
+        bigint user_id FK
+        varchar name
+        text content
+        datetime created_at
+        datetime updated_at
+    }
+
+    likes_slide {
+        bigint id PK
+        bigint slide_id FK
+        bigint user_id FK
+        datetime created_at
+    }
+
+    likes_space {
+        bigint id PK
+        bigint space_id FK
+        bigint user_id FK
+        datetime created_at
+    }
+
+    registration_codes {
+        bigint id PK
+        varchar code UK
+        tinyint is_used
+        bigint used_by FK
+        datetime used_at
+        bigint created_by FK
+        datetime created_at
+        datetime expires_at
+    }
+
+    slidev_themes {
+        bigint id PK
+        varchar package_name UK
+        varchar preview_url
+        datetime created_at
+        datetime updated_at
+        varchar name
+    }
+
+    slidev_plugins {
+        bigint id PK
+        varchar package_name UK
+        datetime created_at
+        datetime updated_at
+        varchar name
+    }
+
+    users ||--o{ slide_spaces : "owns"
+    users ||--o{ slides : "creates"
+    users ||--o{ slide_versions : "creates"
+    users ||--o{ slide_comments : "writes"
+    users ||--o{ slide_user_roles : "has"
+    users ||--o{ snippets : "creates"
+    users ||--o{ likes_slide : "likes"
+    users ||--o{ likes_space : "likes"
+    users ||--o{ registration_codes : "uses/creates"
+
+    slide_spaces ||--o{ slides : "contains"
+    
+    slides ||--o{ slides : "parent-child"
+    slides ||--o{ slide_versions : "has versions"
+    slides ||--o{ slide_comments : "has comments"
+    slides ||--o{ slide_user_roles : "assigned roles"
+    slides ||--o{ likes_slide : "liked by"
+
+    slide_comments ||--o{ slide_comments : "replies to"
+
+    registration_codes ||--o| users : "used by"
+    registration_codes ||--o| users : "created by"
+```
+
+### 表说明
+
+#### 核心表
+- **users**: 用户信息表，存储用户账户、角色和注册码信息
+- **slide_spaces**: 幻灯片空间表，组织和管理幻灯片集合
+- **slides**: 幻灯片内容表，存储具体的幻灯片文档
+- **slide_versions**: 版本控制表，记录幻灯片的版本历史
+
+#### 协作与权限表
+- **slide_user_roles**: 幻灯片用户角色表，定义用户在幻灯片中的权限
+- **slide_comments**: 评论表，支持对幻灯片的评论和回复
+- **likes_slide**: 幻灯片点赞表
+- **likes_space**: 空间点赞表
+
+#### 资源与配置表
+- **snippets**: 代码片段表，用户可复用的代码块
+- **registration_codes**: 注册码表，用于用户注册管理
+- **slidev_themes**: Slidev 主题表
+- **slidev_plugins**: Slidev 插件表
 
 ## 🚀 快速开始
 
