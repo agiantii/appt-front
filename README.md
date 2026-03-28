@@ -1,6 +1,6 @@
 
 
-# APPT Front - AI 驱动的幻灯片协作编辑平台
+# APPT - AI 驱动的幻灯片协作编辑平台
 
 基于 React + TypeScript 构建的现代化幻灯片编辑器，支持实时协作、AI 辅助创作和版本管理。
 
