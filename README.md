@@ -9,15 +9,15 @@
 ### 简洁工作台
 - **简洁工作台**：快速开始，高效创作
 - **快捷功能**：集成了常用功能，快速上手
-![alt text](image.png)
+![alt text](assets/image.png)
 ### 🎨 专业幻灯片编辑器
 - **CodeMirror 6 驱动**：流畅的 Markdown 编辑体验
 - **实时预览**：Dev/Build 双模式即时预览
-- ![alt text](image-1.png)
+- ![alt text](assets/image-1.png)
 - **语法高亮**：支持 Markdown、HTML、CSS、JavaScript
 - **可单向同步大纲**：点击大纲节点，编辑器与preview窗口同步到对应位置
 - **代码片段**：支持插入可复用的代码块、公式、图表等
-- ![alt text](image-2.png)
+- ![alt text](assets/image-2.png)
 - **可调整的预览窗口**: 调节各个窗口的大小
 - **`Ctrl + v`**: 插入图片
 - **快捷键呼出/隐藏**：
@@ -29,34 +29,34 @@
 
 ### 评论功能
 - **评论功能**：对幻灯片内容添加评论和讨论
-   ![alt text](image-3.png)
+   ![alt text](assets/image-3.png)
 ### 🗂️ 知识库管理
 - **SlideSpace 空间**：按项目或主题组织幻灯片
 - **文档结构拖拽**：支持拖拽调整文档顺序
 - **层级结构**：支持父子文档树形结构
 - **标签分类**：灵活的文档分类系统
 - **全局搜索**：快速定位目标文档
-![alt text](image-5.png)
-![alt text](image-6.png)
-![alt text](image-9.png)
+![alt text](assets/image-5.png)
+![alt text](assets/image-6.png)
+![alt text](assets/image-9.png)
 ### 🤖 AI 智能辅助
 - **AI 内容生成**：根据主题自动生成幻灯片内容
 - **智能建议**：提供排版和设计建议
 - **AI 生图**：集成  AI 图像生成能力
-![alt text](image-4.png)
-![alt text](image-10.png)
-![alt text](image-11.png)
+![alt text](assets/image-4.png)
+![alt text](assets/image-10.png)
+
 ### 👥 实时协作
 - **多人在线编辑**：基于 Yjs + Hocuspocus 的 OT 算法
 - **实时光标追踪**：查看协作者的编辑位置
 - **在线状态显示**：实时展示协作者列表
-<video controls src="2026-03-28 14-08-22.mkv" title="Title"></video>
+<video controls src="assets/v1.mkv" title="Title"></video>
 ### 🔐 权限与安全管理
 - **角色权限控制**：Owner / Editor / Commenter / Viewer
 - **JWT 认证**：安全的用户身份验证
 - **文档可见性**：公开/私有文档灵活控制
 - **协作成员管理**：邀请和管理团队成员
-  ![alt text](image-7.png)
+  ![alt text](assets/image-7.png)
 权限配置
 ```ts
 export const PERMISSIONS: Record<SlideRole, string[]> = {
@@ -72,7 +72,7 @@ export const PERMISSIONS: Record<SlideRole, string[]> = {
 - **版本对比**：查看不同版本间的差异
 - **一键回滚**：快速恢复到历史版本
 - **提交消息**：为重要版本添加说明
-![alt text](image-8.png)
+![alt text](assets/image-8.png)
 
 ## 🛠️ 技术栈
 
