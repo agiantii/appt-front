@@ -14,19 +14,19 @@ export const SnippetsPanel: React.FC<SnippetsPanelProps> = ({
   return (
     <div className="p-2 space-y-2">
       <div className="flex items-center justify-between px-2 mb-2">
-        <span className="text-[10px] font-bold text-white/30 uppercase tracking-widest">Workspace Snippets</span>
-        <Link to="/settings/snippets" className="text-[10px] text-white/20 hover:text-white transition-colors underline">Manage</Link>
+        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Workspace Snippets</span>
+        <Link to="/settings/snippets" className="text-[10px] text-muted-foreground hover:text-foreground transition-colors underline">Manage</Link>
       </div>
       {snippets.map(s => (
         <button
           key={s.id}
           onClick={() => onInsertSnippet(s.content)}
-          className="w-full bg-white/5 border border-white/5 hover:border-white/10 p-3 rounded-xl text-left group transition-all"
+          className="w-full bg-accent border border-border hover:border-border p-3 rounded-xl text-left group transition-all"
         >
           <div className="flex justify-between items-center mb-1.5">
-            <span className="text-xs font-bold text-white/80 group-hover:text-white">{s.name}</span>
+            <span className="text-xs font-bold text-foreground group-hover:text-foreground">{s.name}</span>
           </div>
-          <div className="bg-black/20 p-2 rounded-lg text-[8px] font-mono text-white/30 truncate group-hover:text-white/50">
+          <div className="bg-accent p-2 rounded-lg text-[8px] font-mono text-muted-foreground truncate group-hover:text-muted-foreground">
             {s.content.slice(0, 80)}...
           </div>
         </button>

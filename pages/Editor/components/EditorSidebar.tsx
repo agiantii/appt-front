@@ -50,13 +50,13 @@ const EditorSidebar: React.FC<EditorSidebarProps> = ({
       />
 
       {sidebarOpen && (
-        <div className="w-[260px] flex-shrink-0 border-r border-white/5 bg-[#09090b] flex flex-col min-w-0 animate-in slide-in-from-left-2 duration-200">
-          <div className="p-3 border-b border-white/5 flex items-center justify-between bg-[#0c0c0e]">
+        <div className="w-[260px] flex-shrink-0 border-r border-border bg-background flex flex-col min-w-0 animate-in slide-in-from-left-2 duration-200">
+          <div className="p-3 border-b border-border flex items-center justify-between bg-card">
             <div className="flex items-center gap-2">
-               <Zap className="w-3.5 h-3.5 text-white/50" />
-               <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/60">{activeTab}</span>
+               <Zap className="w-3.5 h-3.5 text-muted-foreground" />
+               <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">{activeTab}</span>
             </div>
-            <button onClick={() => setSidebarOpen(false)} className="p-1 hover:bg-white/5 rounded text-white/30 hover:text-white transition-colors">
+            <button onClick={() => setSidebarOpen(false)} className="p-1 hover:bg-accent rounded text-muted-foreground hover:text-foreground transition-colors">
               <SidebarIcon className="w-3.5 h-3.5" />
             </button>
           </div>

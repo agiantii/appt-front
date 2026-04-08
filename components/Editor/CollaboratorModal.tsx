@@ -25,7 +25,7 @@ const ToastContainer: React.FC<{ toasts: Toast[]; onRemove: (id: number) => void
         <div
           key={toast.id}
           className={`flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg animate-in fade-in slide-in-from-right duration-200 ${
-            toast.type === 'success' ? 'bg-green-500/90 text-white' : 'bg-red-500/90 text-white'
+            toast.type === 'success' ? 'bg-success/90 text-white' : 'bg-destructive/90 text-white'
           }`}
         >
           {toast.type === 'success' ? <CheckCircle className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}

@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { Slide, FileTreeNode } from '../../types';
 import { ConfirmModal, InputModal } from '../Common/Modal';
+import { useTheme } from '../../contexts/ThemeContext';
 
 // Toast 通知组件
 interface Toast {
@@ -38,7 +39,7 @@ const ToastContainer: React.FC<{ toasts: Toast[]; onRemove: (id: number) => void
         <div
           key={toast.id}
           className={`flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg animate-in fade-in slide-in-from-right duration-200 ${
-            toast.type === 'success' ? 'bg-green-500/90 text-white' : 'bg-red-500/90 text-white'
+            toast.type === 'success' ? 'bg-success/90 text-white' : 'bg-destructive/90 text-white'
           }`}
         >
           {toast.type === 'success' ? <CheckCircle className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
@@ -59,6 +60,8 @@ interface FileTreeProps {
 }
 
 const FileTree: React.FC<FileTreeProps> = ({ data, slideSpaceId, onSelect, onUpdate, onAddChild, onAddRoot }) => {
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
   const [localSlides, setLocalSlides] = useState<Slide[]>(data);
   const [expanded, setExpanded] = useState<Record<number, boolean>>({});
   const [draggedId, setDraggedId] = useState<number | null>(null);
@@ -330,7 +333,7 @@ const FileTree: React.FC<FileTreeProps> = ({ data, slideSpaceId, onSelect, onUpd
     const isMenuActive = activeMenuId === node.id;
     const isBeingDragged = draggedId === node.id;
     const itemRef = useRef<HTMLDivElement>(null);
-
+  
     const getDropIndicatorClass = () => {
       if (!isTarget || !dropPosition) return '';
       if (dropPosition === 'before') return 'before:absolute before:left-4 before:right-2 before:-top-0.5 before:h-0.5 before:bg-blue-500 before:rounded-full';
@@ -341,7 +344,9 @@ const FileTree: React.FC<FileTreeProps> = ({ data, slideSpaceId, onSelect, onUpd
     return (
       <div
         className={`group/item select-none transition-all relative ${getDropIndicatorClass()} ${
-          isTarget && dropPosition === 'inside' ? 'bg-blue-500/20 ring-1 ring-blue-500/40 rounded-md' : ''
+          isTarget && dropPosition === 'inside' 
+            ? (isDark ? 'bg-blue-500/20 ring-1 ring-blue-500/40' : 'bg-blue-50 ring-1 ring-blue-200')
+            : ''
         } ${isBeingDragged ? 'opacity-40' : ''}`}
         onDragOver={(e) => onDragOver(e, node.id, itemRef.current || undefined)}
         onDrop={(e) => onDrop(e, node.id)}
@@ -351,11 +356,15 @@ const FileTree: React.FC<FileTreeProps> = ({ data, slideSpaceId, onSelect, onUpd
           draggable={true}
           onDragStart={(e) => onDragStart(e, node.id)}
           onDragEnd={onDragEnd}
-          className="flex items-center gap-1.5 px-2 py-1.5 hover:bg-white/5 rounded-md cursor-pointer relative transition-all"
+          className={`flex items-center gap-1.5 px-2 py-1.5 rounded-md cursor-pointer relative transition-all ${
+            isDark ? 'hover:bg-white/5' : 'hover:bg-gray-100'
+          }`}
           style={{ paddingLeft: `${level * 16 + 8}px` }}
         >
-          <div className={`cursor-grab active:cursor-grabbing transition-opacity ${isDragging ? 'opacity-30' : 'opacity-0 group-hover/item:opacity-20'}`}>
-            <GripVertical className="w-3.5 h-3.5" />
+          <div className={`cursor-grab active:cursor-grabbing transition-opacity ${
+            isDragging ? 'opacity-30' : (isDark ? 'opacity-0 group-hover/item:opacity-20' : 'opacity-0 group-hover/item:opacity-40')
+          }`}>
+            <GripVertical className={isDark ? 'w-3.5 h-3.5' : 'w-3.5 h-3.5 text-gray-400'} />
           </div>
 
           <button
@@ -363,17 +372,25 @@ const FileTree: React.FC<FileTreeProps> = ({ data, slideSpaceId, onSelect, onUpd
               e.stopPropagation();
               toggleExpand(e, node.id);
             }}
-            className={`p-0.5 hover:bg-white/10 rounded transition-opacity ${hasChildren ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+            className={`p-0.5 rounded transition-opacity ${
+              hasChildren ? 'opacity-100' : 'opacity-0 pointer-events-none'
+            } ${isDark ? 'hover:bg-white/10' : 'hover:bg-gray-200'}`}
           >
-            {isExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+            {isExpanded ? <ChevronDown className={isDark ? 'w-3.5 h-3.5' : 'w-3.5 h-3.5 text-gray-600'} /> : <ChevronRight className={isDark ? 'w-3.5 h-3.5' : 'w-3.5 h-3.5 text-gray-600'} />}
           </button>
 
           <div
             className="flex-1 flex items-center gap-1.5 min-w-0"
             onClick={() => onSelect?.(node.id)}
           >
-            <FileText className={`w-4 h-4 flex-shrink-0 ${hasChildren ? 'text-white/50' : 'text-white/30'}`} />
-            <span className="text-xs text-white/70 truncate py-0.5 font-medium">
+            <FileText className={`w-4 h-4 flex-shrink-0 ${
+              hasChildren 
+                ? (isDark ? 'text-white/50' : 'text-gray-600')
+                : (isDark ? 'text-white/30' : 'text-gray-500')
+            }`} />
+            <span className={`text-xs truncate py-0.5 font-medium ${
+              isDark ? 'text-white/70' : 'text-gray-900'
+            }`}>
               {node.title}
             </span>
           </div>
@@ -385,7 +402,11 @@ const FileTree: React.FC<FileTreeProps> = ({ data, slideSpaceId, onSelect, onUpd
                 if (onAddChild) onAddChild(node.id);
                 setExpanded(prev => ({ ...prev, [node.id]: true }));
               }}
-              className="p-1 hover:bg-white/10 text-white/30 hover:text-white rounded transition-opacity opacity-0 group-hover/item:opacity-100"
+              className={`p-1 rounded transition-opacity opacity-0 group-hover/item:opacity-100 ${
+                isDark 
+                  ? 'hover:bg-white/10 text-white/30 hover:text-white'
+                  : 'hover:bg-gray-200 text-gray-500 hover:text-gray-900'
+              }`}
               title="新建子页面"
             >
               <Plus className="w-3 h-3" />
@@ -396,15 +417,25 @@ const FileTree: React.FC<FileTreeProps> = ({ data, slideSpaceId, onSelect, onUpd
                   e.stopPropagation();
                   setActiveMenuId(isMenuActive ? null : node.id);
                 }}
-                className={`p-1 hover:bg-white/10 text-white/30 hover:text-white rounded transition-opacity ${isMenuActive ? 'opacity-100 bg-white/10' : 'opacity-0 group-hover/item:opacity-100'}`}
+                className={`p-1 rounded transition-opacity ${
+                  isMenuActive 
+                    ? (isDark ? 'opacity-100 bg-white/10' : 'opacity-100 bg-gray-200')
+                    : (isDark 
+                        ? 'opacity-0 group-hover/item:opacity-100 hover:bg-white/10 text-white/30 hover:text-white'
+                        : 'opacity-0 group-hover/item:opacity-100 hover:bg-gray-200 text-gray-500 hover:text-gray-900')
+                }`}
               >
-                <MoreVertical className="w-3.5 h-3.5" />
+                <MoreVertical className={isDark ? 'w-3.5 h-3.5' : 'w-3.5 h-3.5 text-gray-600'} />
               </button>
 
               {isMenuActive && (
                 <div
                   ref={menuRef}
-                  className="absolute right-0 top-full mt-1 w-36 bg-[#1c1c1f] border border-white/10 rounded-lg shadow-2xl z-50 py-1 animate-in fade-in zoom-in-95 duration-100"
+                  className={`absolute right-0 top-full mt-1 w-36 border rounded-lg shadow-2xl z-50 py-1 animate-in fade-in zoom-in-95 duration-100 ${
+                    isDark 
+                      ? 'bg-[#1c1c1f] border-white/10'
+                      : 'bg-white border-gray-200'
+                  }`}
                 >
                   <button
                     onClick={(e) => {
@@ -413,7 +444,11 @@ const FileTree: React.FC<FileTreeProps> = ({ data, slideSpaceId, onSelect, onUpd
                       setActiveMenuId(null);
                       setExpanded(prev => ({ ...prev, [node.id]: true }));
                     }}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-xs text-white/70 hover:bg-white/10 transition-colors"
+                    className={`w-full flex items-center gap-2 px-3 py-2 text-xs transition-colors ${
+                      isDark 
+                        ? 'text-white/70 hover:bg-white/10'
+                        : 'text-gray-900 hover:bg-gray-100'
+                    }`}
                   >
                     <Plus className="w-3 h-3" /> New Slide
                   </button>
@@ -422,17 +457,25 @@ const FileTree: React.FC<FileTreeProps> = ({ data, slideSpaceId, onSelect, onUpd
                       e.stopPropagation();
                       openRenameModal(node.id, node.title);
                     }}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-xs text-white/70 hover:bg-white/10 transition-colors"
+                    className={`w-full flex items-center gap-2 px-3 py-2 text-xs transition-colors ${
+                      isDark 
+                        ? 'text-white/70 hover:bg-white/10'
+                        : 'text-gray-900 hover:bg-gray-100'
+                    }`}
                   >
                     <Pencil className="w-3 h-3" /> Rename
                   </button>
-                  <div className="h-px bg-white/5 my-1" />
+                  <div className={`h-px my-1 ${isDark ? 'bg-white/5' : 'bg-gray-100'}`} />
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
                       openDeleteModal(node.id);
                     }}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-xs text-red-400 hover:bg-red-400/10 transition-colors"
+                    className={`w-full flex items-center gap-2 px-3 py-2 text-xs transition-colors ${
+                      isDark 
+                        ? 'text-red-400 hover:bg-red-400/10'
+                        : 'text-red-500 hover:bg-red-50'
+                    }`}
                   >
                     <Trash2 className="w-3 h-3" /> Delete
                   </button>
@@ -456,12 +499,18 @@ const FileTree: React.FC<FileTreeProps> = ({ data, slideSpaceId, onSelect, onUpd
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between px-2 mb-3">
-        <span className="text-[10px] font-bold text-white/30 uppercase tracking-widest">Knowledge Tree</span>
+        <span className={`text-[10px] font-bold uppercase tracking-widest ${
+          isDark ? 'text-white/30' : 'text-gray-500'
+        }`}>Knowledge Tree</span>
         <div className="flex gap-1">
           <button 
             title="Add Root Slide"
             onClick={onAddRoot}
-            className="p-1.5 hover:bg-white/5 text-white/30 hover:text-white rounded transition-colors"
+            className={`p-1.5 rounded transition-colors ${
+              isDark 
+                ? 'hover:bg-white/5 text-white/30 hover:text-white'
+                : 'hover:bg-gray-200 text-gray-500 hover:text-gray-900'
+            }`}
           >
             <FilePlus className="w-3.5 h-3.5" />
           </button>
@@ -469,15 +518,23 @@ const FileTree: React.FC<FileTreeProps> = ({ data, slideSpaceId, onSelect, onUpd
       </div>
 
       <div 
-        className={`flex-1 overflow-y-auto space-y-0.5 min-h-[50px] pb-4 transition-colors ${dropTargetId === null && draggedId !== null ? 'bg-white/[0.02]' : ''}`}
+        className={`flex-1 overflow-y-auto space-y-0.5 min-h-[50px] pb-4 transition-colors ${
+          dropTargetId === null && draggedId !== null 
+            ? (isDark ? 'bg-white/[0.02]' : 'bg-gray-50/50')
+            : ''
+        }`}
         onDragOver={(e) => onDragOver(e, null)}
         onDrop={(e) => onDrop(e, null)}
         onDragLeave={() => setDropTargetId(null)}
       >
         {tree.length === 0 ? (
-          <div className="px-3 py-6 border border-dashed border-white/5 rounded-xl text-center flex flex-col items-center gap-2">
-            <FileText className="w-8 h-8 text-white/5" />
-            <span className="text-[10px] text-white/20 uppercase font-bold">No Documents</span>
+          <div className={`px-3 py-6 border border-dashed rounded-xl text-center flex flex-col items-center gap-2 ${
+            isDark ? 'border-white/5' : 'border-gray-200'
+          }`}>
+            <FileText className={`w-8 h-8 ${isDark ? 'text-white/5' : 'text-gray-200'}`} />
+            <span className={`text-[10px] uppercase font-bold ${
+              isDark ? 'text-white/20' : 'text-gray-300'
+            }`}>No Documents</span>
           </div>
         ) : (
           tree.map(node => <TreeNode key={node.id} node={node} level={0} />)

@@ -32,12 +32,12 @@ export const Modal: React.FC<ModalProps> = ({
         className="absolute inset-0 bg-black/60 backdrop-blur-sm" 
         onClick={onClose}
       />
-      <div className={`relative ${sizeClasses[size]} bg-[#1c1c1f] border border-white/10 rounded-2xl shadow-2xl animate-in fade-in zoom-in-95 duration-200`}>
-        <div className="flex items-center justify-between px-5 py-4 border-b border-white/5">
-          <h3 className="text-sm font-semibold text-white/90">{title}</h3>
+      <div className={`relative ${sizeClasses[size]} bg-card border border-border rounded-2xl shadow-2xl animate-in fade-in zoom-in-95 duration-200`}>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+          <h3 className="text-sm font-semibold text-foreground">{title}</h3>
           <button 
             onClick={onClose}
-            className="p-1.5 hover:bg-white/10 rounded-lg text-white/40 hover:text-white transition-colors"
+            className="p-1.5 hover:bg-accent rounded-lg text-muted-foreground hover:text-foreground transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
@@ -46,7 +46,7 @@ export const Modal: React.FC<ModalProps> = ({
           {children}
         </div>
         {footer && (
-          <div className="flex items-center justify-end gap-3 px-5 py-4 border-t border-white/5">
+          <div className="flex items-center justify-end gap-3 px-5 py-4 border-t border-border">
             {footer}
           </div>
         )}
@@ -77,15 +77,15 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
   type = 'warning'
 }) => {
   const typeStyles = {
-    danger: 'bg-red-500 hover:bg-red-600 text-white',
-    warning: 'bg-amber-500 hover:bg-amber-600 text-white',
-    info: 'bg-blue-500 hover:bg-blue-600 text-white'
+    danger: 'bg-destructive hover:bg-destructive/90 text-foreground',
+    warning: 'bg-warning hover:bg-warning/90 text-foreground',
+    info: 'bg-info hover:bg-info/90 text-foreground'
   };
 
   const iconColors = {
-    danger: 'text-red-400',
-    warning: 'text-amber-400',
-    info: 'text-blue-400'
+    danger: 'text-destructive',
+    warning: 'text-warning',
+    info: 'text-info'
   };
 
   return (
@@ -98,7 +98,7 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
         <>
           <button
             onClick={onClose}
-            className="px-4 py-2 text-xs font-medium text-white/60 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
+            className="px-4 py-2 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition-colors"
           >
             {cancelText}
           </button>
@@ -113,7 +113,7 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
     >
       <div className="flex items-start gap-3">
         <AlertTriangle className={`w-5 h-5 flex-shrink-0 mt-0.5 ${iconColors[type]}`} />
-        <p className="text-sm text-white/70 leading-relaxed">{message}</p>
+        <p className="text-sm text-muted-foreground leading-relaxed">{message}</p>
       </div>
     </Modal>
   );
@@ -163,14 +163,14 @@ export const InputModal: React.FC<InputModalProps> = ({
         <>
           <button
             onClick={onClose}
-            className="px-4 py-2 text-xs font-medium text-white/60 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
+            className="px-4 py-2 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition-colors"
           >
             {cancelText}
           </button>
           <button
             onClick={handleConfirm}
             disabled={!value.trim()}
-            className="px-4 py-2 text-xs font-medium bg-white text-black hover:bg-white/90 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="px-4 py-2 text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {confirmText}
           </button>
@@ -184,7 +184,7 @@ export const InputModal: React.FC<InputModalProps> = ({
         onChange={(e) => setValue(e.target.value)}
         onKeyDown={(e) => e.key === 'Enter' && handleConfirm()}
         placeholder={placeholder}
-        className="w-full bg-[#0c0c0e] border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white/90 placeholder:text-white/30 focus:outline-none focus:border-white/30 focus:ring-1 focus:ring-white/10"
+        className="w-full bg-card border border-border rounded-lg px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-ring focus:ring-1 focus:ring-ring/30"
       />
     </Modal>
   );

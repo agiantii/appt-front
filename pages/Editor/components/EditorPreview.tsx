@@ -226,13 +226,13 @@ const EditorPreview: React.FC<EditorPreviewProps> = ({
 
   return (
     <div className="flex flex-col h-full min-w-0">
-      <div className="h-10 border-b border-white/5 flex items-center justify-between px-4 bg-[#09090b]">
-        <div className="flex gap-1.5 bg-white/5 p-1 rounded-xl">
+      <div className="h-10 border-b border-border flex items-center justify-between px-4 bg-background">
+        <div className="flex gap-1.5 bg-accent p-1 rounded-xl">
           {(['dev', 'build'] as const).map(mode => (
             <button 
               key={mode}
               onClick={() => setPreviewMode(mode)}
-              className={`px-4 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${previewMode === mode ? 'bg-white text-black shadow-lg shadow-white/5' : 'text-white/30 hover:text-white/60'}`}
+              className={`px-4 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${previewMode === mode ? 'bg-primary text-primary-foreground shadow-lg shadow-white/5' : 'text-muted-foreground hover:text-muted-foreground'}`}
             >
               {mode}
             </button>
@@ -243,7 +243,7 @@ const EditorPreview: React.FC<EditorPreviewProps> = ({
             <button 
               onClick={handleStopDev} 
               disabled={isStopping}
-              className="flex items-center gap-1.5 px-3 py-1.5 hover:bg-red-500/10 rounded-lg text-white/40 hover:text-red-400 transition-all disabled:opacity-50"
+              className="flex items-center gap-1.5 px-3 py-1.5 hover:bg-destructive/10 rounded-lg text-muted-foreground hover:text-red-400 transition-all disabled:opacity-50"
               title="Stop Dev Server"
             >
               <Square className={`w-3.5 h-3.5 ${isStopping ? 'animate-pulse' : ''}`} />
@@ -253,27 +253,27 @@ const EditorPreview: React.FC<EditorPreviewProps> = ({
           <button 
             onClick={handleBuild} 
             disabled={isBuilding}
-            className="flex items-center gap-1.5 px-3 py-1.5 hover:bg-white/5 rounded-lg text-white/40 hover:text-white transition-all disabled:opacity-50"
+            className="flex items-center gap-1.5 px-3 py-1.5 hover:bg-accent rounded-lg text-muted-foreground hover:text-white transition-all disabled:opacity-50"
             title="Build"
           >
             <Hammer className={`w-3.5 h-3.5 ${isBuilding ? 'animate-pulse' : ''}`} />
             <span className="text-[10px] font-bold uppercase">Build</span>
           </button>
-          <div className="w-px h-4 bg-white/10 mx-1" />
-          <button onClick={fetchPreview} className="p-1.5 hover:bg-white/5 rounded-lg text-white/40 hover:text-white transition-all" title="Refresh">
+          <div className="w-px h-4 bg-accent/50 mx-1" />
+          <button onClick={fetchPreview} className="p-1.5 hover:bg-accent rounded-lg text-muted-foreground hover:text-white transition-all" title="Refresh">
             <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
           </button>
           <button 
             onClick={handleCapture}
             disabled={isCapturing || !previewUrl}
-            className="p-1.5 hover:bg-white/5 rounded-lg text-white/40 hover:text-white transition-all disabled:opacity-50" 
+            className="p-1.5 hover:bg-accent rounded-lg text-muted-foreground hover:text-white transition-all disabled:opacity-50" 
             title="Capture"
           >
             <Camera className={`w-3.5 h-3.5 ${isCapturing ? 'animate-pulse' : ''}`} />
           </button>
           <button 
             onClick={toggleFullscreen}
-            className="p-1.5 hover:bg-white/5 rounded-lg text-white/40 hover:text-white transition-all" 
+            className="p-1.5 hover:bg-accent rounded-lg text-muted-foreground hover:text-white transition-all" 
             title={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
           >
             {isFullscreen ? <Minimize className="w-3.5 h-3.5" /> : <Maximize className="w-3.5 h-3.5" />}
@@ -281,16 +281,16 @@ const EditorPreview: React.FC<EditorPreviewProps> = ({
         </div>
       </div>
       
-      <div ref={iframeWrapperRef} className="flex-1 bg-[#121214] overflow-hidden flex items-center justify-center relative">
+      <div ref={iframeWrapperRef} className="flex-1 bg-card overflow-hidden flex items-center justify-center relative">
         {isLoading ? (
-          <div className="flex flex-col items-center gap-3 text-white/40">
+          <div className="flex flex-col items-center gap-3 text-muted-foreground">
             <Loader2 className="w-8 h-8 animate-spin" />
             <span className="text-xs">Loading preview...</span>
           </div>
         ) : error ? (
-          <div className="flex flex-col items-center gap-3 text-white/40">
+          <div className="flex flex-col items-center gap-3 text-muted-foreground">
             <span className="text-sm">{error}</span>
-            <button onClick={fetchPreview} className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-xs transition-colors">
+            <button onClick={fetchPreview} className="px-4 py-2 bg-accent/50 hover:bg-white/20 rounded-lg text-xs transition-colors">
               Retry
             </button>
           </div>
@@ -299,12 +299,12 @@ const EditorPreview: React.FC<EditorPreviewProps> = ({
             ref={iframeRef}
             key={currentPage}
             src={getIframeSrc()}
-            className="w-full h-full border-0 bg-[#121214]"
+            className="w-full h-full border-0 bg-card"
             title="Slide Preview"
             sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
           />
         ) : (
-          <div className="text-white/30 text-sm">No preview available</div>
+          <div className="text-muted-foreground text-sm">No preview available</div>
         )}
       </div>
 
@@ -313,8 +313,8 @@ const EditorPreview: React.FC<EditorPreviewProps> = ({
         <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
           <div className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border shadow-lg ${
             toast.type === 'success' 
-              ? 'bg-[#09090b] border-green-500/30 text-green-400' 
-              : 'bg-[#09090b] border-red-500/30 text-red-400'
+              ? 'bg-background border-green-500/30 text-green-400' 
+              : 'bg-background border-red-500/30 text-red-400'
           }`}>
             <CheckCircle2 className="w-4 h-4" />
             <span className="text-sm font-medium">{toast.message}</span>
@@ -332,14 +332,14 @@ const EditorPreview: React.FC<EditorPreviewProps> = ({
           <>
             <button
               onClick={closeUploadModal}
-              className="px-4 py-2 text-xs font-medium text-white/60 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
+              className="px-4 py-2 text-xs font-medium text-muted-foreground hover:text-white hover:bg-accent rounded-lg transition-colors"
             >
               取消
             </button>
             <button
               onClick={handleUpload}
               disabled={!uploadFile || isUploading}
-              className="px-4 py-2 text-xs font-medium bg-white text-black hover:bg-white/90 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              className="px-4 py-2 text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {isUploading ? '上传中...' : '确认'}
             </button>
@@ -356,10 +356,10 @@ const EditorPreview: React.FC<EditorPreviewProps> = ({
           />
           {uploadPreview ? (
             <div className="relative">
-              <img src={uploadPreview} alt="Preview" className="w-full h-48 object-contain rounded-lg bg-[#0c0c0e]" />
+              <img src={uploadPreview} alt="Preview" className="w-full h-48 object-contain rounded-lg bg-card" />
               <button
                 onClick={() => { setUploadPreview(null); setUploadFile(null); }}
-                className="absolute top-2 right-2 p-1 bg-black/60 hover:bg-black/80 rounded-lg text-white/80 transition-colors"
+                className="absolute top-2 right-2 p-1 bg-black/60 hover:bg-black/80 rounded-lg text-foreground transition-colors"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -369,14 +369,14 @@ const EditorPreview: React.FC<EditorPreviewProps> = ({
               onDrop={handleDrop}
               onDragOver={(e) => e.preventDefault()}
               onClick={() => fileInputRef.current?.click()}
-              className="h-48 border-2 border-dashed border-white/10 hover:border-white/30 rounded-lg flex flex-col items-center justify-center gap-3 cursor-pointer transition-colors"
+              className="h-48 border-2 border-dashed border-border hover:border-border rounded-lg flex flex-col items-center justify-center gap-3 cursor-pointer transition-colors"
             >
-              <div className="p-3 bg-white/5 rounded-full">
-                <ImageIcon className="w-8 h-8 text-white/40" />
+              <div className="p-3 bg-accent rounded-full">
+                <ImageIcon className="w-8 h-8 text-muted-foreground" />
               </div>
               <div className="text-center">
-                <p className="text-sm text-white/60">点击选择图片或拖拽到此处</p>
-                <p className="text-xs text-white/30 mt-1">支持 Ctrl+V 粘贴图片</p>
+                <p className="text-sm text-muted-foreground">点击选择图片或拖拽到此处</p>
+                <p className="text-xs text-muted-foreground mt-1">支持 Ctrl+V 粘贴图片</p>
               </div>
             </div>
           )}
@@ -385,21 +385,21 @@ const EditorPreview: React.FC<EditorPreviewProps> = ({
 
       <div 
         onMouseDown={onOutlineResize}
-        className="h-1 cursor-row-resize hover:bg-white/10 z-20 flex-shrink-0 transition-colors bg-white/5" 
+        className="h-1 cursor-row-resize hover:bg-accent/50 z-20 flex-shrink-0 transition-colors bg-accent" 
       />
 
-      <div style={{ height: `${outlineHeight}px` }} className="border-t border-white/5 bg-[#09090b] flex flex-col min-h-[100px] flex-shrink-0">
-        <div className="p-3 px-5 border-b border-white/5 flex items-center justify-between">
+      <div style={{ height: `${outlineHeight}px` }} className="border-t border-border bg-background flex flex-col min-h-[100px] flex-shrink-0">
+        <div className="p-3 px-5 border-b border-border flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">Outline</span>
+            <span className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">Outline</span>
             <div className="h-1 w-1 rounded-full bg-white/20" />
-            <span className="text-[10px] text-white/20 font-mono">{slidePages.length} Slides</span>
+            <span className="text-[10px] text-muted-foreground font-mono">{slidePages.length} Slides</span>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={() => onScrollOutline('top')} className="p-1.5 hover:bg-white/5 rounded-lg text-white/30 hover:text-white transition-all">
+            <button onClick={() => onScrollOutline('top')} className="p-1.5 hover:bg-accent rounded-lg text-muted-foreground hover:text-white transition-all">
               <ArrowUp className="w-4 h-4" />
             </button>
-            <button onClick={() => onScrollOutline('bottom')} className="p-1.5 hover:bg-white/5 rounded-lg text-white/30 hover:text-white transition-all">
+            <button onClick={() => onScrollOutline('bottom')} className="p-1.5 hover:bg-accent rounded-lg text-muted-foreground hover:text-white transition-all">
               <ArrowDown className="w-4 h-4" />
             </button>
           </div>
@@ -409,12 +409,12 @@ const EditorPreview: React.FC<EditorPreviewProps> = ({
             <button 
               key={page.index}
               onClick={() => handleOutlineClick(page)}
-              className={`w-full flex items-center gap-4 px-4 py-2.5 rounded-xl group transition-all text-left ${currentPage === page.index ? 'bg-indigo-500/20 border border-indigo-500/30' : 'hover:bg-white/5 border border-transparent'}`}
+              className={`w-full flex items-center gap-4 px-4 py-2.5 rounded-xl group transition-all text-left ${currentPage === page.index ? 'bg-primary/20 border border-primary/30' : 'hover:bg-accent border border-transparent'}`}
             >
-              <span className={`text-[10px] font-mono font-bold w-5 h-5 flex items-center justify-center rounded ${currentPage === page.index ? 'bg-indigo-500 text-white' : 'text-white/20 group-hover:text-white/40'}`}>{page.index}</span>
+              <span className={`text-[10px] font-mono font-bold w-5 h-5 flex items-center justify-center rounded ${currentPage === page.index ? 'bg-primary text-white' : 'text-muted-foreground group-hover:text-muted-foreground'}`}>{page.index}</span>
               <div className="flex-1 min-w-0">
-                <span className={`text-xs font-semibold truncate block ${currentPage === page.index ? 'text-white' : 'text-white/50 group-hover:text-white/90'}`}>{page.title}</span>
-                <span className="text-[10px] text-white/20 group-hover:text-white/30 truncate block mt-0.5">{page.preview}...</span>
+                <span className={`text-xs font-semibold truncate block ${currentPage === page.index ? 'text-white' : 'text-muted-foreground group-hover:text-foreground'}`}>{page.title}</span>
+                <span className="text-[10px] text-muted-foreground group-hover:text-muted-foreground truncate block mt-0.5">{page.preview}...</span>
               </div>
             </button>
           ))}

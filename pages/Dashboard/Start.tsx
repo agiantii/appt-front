@@ -27,7 +27,7 @@ const ToastContainer: React.FC<{ toasts: Toast[]; onRemove: (id: number) => void
         <div
           key={toast.id}
           className={`flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg animate-in fade-in slide-in-from-right duration-200 ${
-            toast.type === 'success' ? 'bg-green-500/90 text-white' : 'bg-red-500/90 text-white'
+            toast.type === 'success' ? 'bg-green-600/90 text-white' : 'bg-destructive/90 text-white'
           }`}
         >
           {toast.type === 'success' ? <CheckCircle className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
@@ -87,39 +87,39 @@ const CreateSlideModal: React.FC<CreateSlideModalProps> = ({ isOpen, onClose, sp
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-[480px] bg-[#1c1c1f] border border-white/10 rounded-2xl shadow-2xl animate-in fade-in zoom-in-95 duration-200">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-white/5">
-          <h3 className="text-sm font-semibold text-white/90">Create New Slide</h3>
-          <button onClick={onClose} className="p-1.5 hover:bg-white/10 rounded-lg text-white/40 hover:text-white transition-colors">
+      <div className="relative w-[480px] bg-secondary border border-border rounded-2xl shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+          <h3 className="text-sm font-semibold text-foreground">Create New Slide</h3>
+          <button onClick={onClose} className="p-1.5 hover:bg-accent/50 rounded-lg text-muted-foreground hover:text-foreground transition-colors">
             <X className="w-4 h-4" />
           </button>
         </div>
         <div className="px-5 py-5 space-y-4">
           {/* Knowledge Base Selector */}
           <div className="space-y-2">
-            <label className="text-xs font-medium text-white/50 uppercase tracking-wider">Knowledge Base</label>
+            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Knowledge Base</label>
             <div className="relative" ref={dropdownRef}>
               <button
                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                className="w-full flex items-center justify-between bg-[#0c0c0e] border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white/90 hover:border-white/20 transition-colors"
+                className="w-full flex items-center justify-between bg-background border border-border rounded-lg px-3 py-2.5 text-sm text-foreground hover:border-ring transition-colors"
               >
-                <span className={selectedSpace ? 'text-white/90' : 'text-white/30'}>
+                <span className={selectedSpace ? 'text-foreground' : 'text-muted-foreground'}>
                   {selectedSpace ? selectedSpace.name : 'Select a knowledge base...'}
                 </span>
-                <ChevronDown className={`w-4 h-4 text-white/40 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
+                <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
               </button>
               
               {isDropdownOpen && (
-                <div className="absolute top-full left-0 right-0 mt-1 bg-[#0c0c0e] border border-white/10 rounded-lg shadow-2xl z-50 overflow-hidden">
-                  <div className="p-2 border-b border-white/5">
+                <div className="absolute top-full left-0 right-0 mt-1 bg-background border border-border rounded-lg shadow-2xl z-50 overflow-hidden">
+                  <div className="p-2 border-b border-border">
                     <div className="relative">
-                      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+                      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                       <input
                         type="text"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         placeholder="Search knowledge bases..."
-                        className="w-full bg-[#1c1c1f] border border-white/10 rounded-md pl-9 pr-3 py-1.5 text-xs text-white/90 placeholder:text-white/30 focus:outline-none focus:border-white/30"
+                        className="w-full bg-secondary border border-border rounded-md pl-9 pr-3 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-ring"
                         autoFocus
                       />
                     </div>
@@ -136,18 +136,18 @@ const CreateSlideModal: React.FC<CreateSlideModalProps> = ({ isOpen, onClose, sp
                           }}
                           className={`w-full text-left px-3 py-2 text-xs transition-colors ${
                             selectedSpace?.id === space.id
-                              ? 'bg-white/10 text-white'
-                              : 'text-white/70 hover:bg-white/5 hover:text-white'
+                              ? 'bg-accent text-accent-foreground'
+                              : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
                           }`}
                         >
                           <div className="flex items-center gap-2">
-                            <BookOpen className="w-3.5 h-3.5 text-white/40" />
+                            <BookOpen className="w-3.5 h-3.5 text-muted-foreground" />
                             <span className="truncate">{space.name}</span>
                           </div>
                         </button>
                       ))
                     ) : (
-                      <div className="px-3 py-4 text-center text-xs text-white/30">
+                      <div className="px-3 py-4 text-center text-xs text-muted-foreground">
                         No knowledge bases found
                       </div>
                     )}
@@ -159,29 +159,29 @@ const CreateSlideModal: React.FC<CreateSlideModalProps> = ({ isOpen, onClose, sp
 
           {/* Slide Title Input */}
           <div className="space-y-2">
-            <label className="text-xs font-medium text-white/50 uppercase tracking-wider">Slide Title</label>
+            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Slide Title</label>
             <input
               type="text"
               value={slideTitle}
               onChange={(e) => setSlideTitle(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
               placeholder="Enter slide title..."
-              className="w-full bg-[#0c0c0e] border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white/90 placeholder:text-white/30 focus:outline-none focus:border-white/30 focus:ring-1 focus:ring-white/10"
+              className="w-full bg-background border border-border rounded-lg px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-ring focus:ring-1 focus:ring-ring"
               autoFocus={!!selectedSpace}
             />
           </div>
         </div>
-        <div className="flex items-center justify-end gap-3 px-5 py-4 border-t border-white/5">
+        <div className="flex items-center justify-end gap-3 px-5 py-4 border-t border-border">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-xs font-medium text-white/60 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
+            className="px-4 py-2 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent/50 rounded-lg transition-colors"
           >
             Cancel
           </button>
           <button
             onClick={handleCreate}
             disabled={!selectedSpace || !slideTitle.trim()}
-            className="px-4 py-2 text-xs font-medium bg-white text-black hover:bg-white/90 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="px-4 py-2 text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             Create Slide
           </button>
@@ -385,12 +385,12 @@ const StartPage: React.FC = () => {
     <div className="max-w-7xl mx-auto p-12 space-y-16 animate-in fade-in slide-in-from-bottom-8 duration-1000">
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-8">
         <div className="space-y-2">
-          <h1 className="text-5xl font-black tracking-tightest">Workdesk</h1>
-          <p className="text-white/30 text-xl font-medium">Welcome back, {currentUser?.username || 'User'}. Your workspace is ready.</p>
+          <h1 className="text-5xl font-black tracking-tightest text-foreground">Workdesk</h1>
+          <p className="text-muted-foreground text-xl font-medium">Welcome back, {currentUser?.username || 'User'}. Your workspace is ready.</p>
         </div>
         <button 
           onClick={() => setIsCreateModalOpen(true)}
-          className="flex items-center gap-3 bg-white text-black px-8 py-4 rounded-[20px] font-black uppercase tracking-widest text-xs hover:bg-white/90 transition-all shadow-2xl shadow-white/10 active:scale-95"
+          className="flex items-center gap-3 bg-primary text-primary-foreground px-8 py-4 rounded-[20px] font-black uppercase tracking-widest text-xs hover:bg-primary/90 transition-all shadow-2xl shadow-primary/10 active:scale-95"
         >
           <Plus className="w-5 h-5 stroke-[3px]" />
           Create Slide
@@ -407,11 +407,11 @@ const StartPage: React.FC = () => {
               value={searchKeyword}
               onChange={(e) => handleSearch(e.target.value)}
               placeholder="Search your slides..."
-              className="w-full bg-[#0c0c0e] border border-white/10 rounded-[20px] pl-14 pr-5 py-4 text-sm text-white/90 placeholder:text-white/30 focus:outline-none focus:border-white/30 focus:ring-1 focus:ring-white/10 transition-all"
+              className="w-full bg-secondary border border-border rounded-[20px] pl-14 pr-5 py-4 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-ring focus:ring-1 focus:ring-ring transition-all"
             />
             {isSearching && (
               <div className="absolute right-5 top-1/2 -translate-y-1/2">
-                <div className="w-4 h-4 border-2 border-white/20 border-t-white/60 rounded-full animate-spin" />
+                <div className="w-4 h-4 border-2 border-muted-foreground/20 border-t-foreground rounded-full animate-spin" />
               </div>
             )}
           </div>
@@ -421,7 +421,7 @@ const StartPage: React.FC = () => {
         {searchKeyword && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-bold text-white/70">
+              <h3 className="text-lg font-bold text-muted-foreground">
                 {searchResults.length > 0 ? `Found ${searchResults.length} results` : 'No results found'}
               </h3>
               <button 
@@ -429,7 +429,7 @@ const StartPage: React.FC = () => {
                   setSearchKeyword('');
                   setSearchResults([]);
                 }}
-                className="text-xs text-white/40 hover:text-white transition-colors"
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors"
               >
                 Clear search
               </button>
@@ -441,9 +441,9 @@ const StartPage: React.FC = () => {
                   <Link
                     key={`search-${slide.id}`}
                     to={`/slide/${slide.slideSpaceId}/${slide.id}`}
-                    className="bg-[#0c0c0e] border border-white/5 p-5 rounded-[24px] hover:border-white/20 transition-all group flex flex-col shadow-lg"
+                    className="bg-secondary border border-border p-5 rounded-[24px] hover:border-ring transition-all group flex flex-col shadow-lg"
                   >
-                    <div className="aspect-video bg-[#18181b] rounded-xl mb-4 overflow-hidden flex items-center justify-center relative">
+                    <div className="aspect-video bg-muted rounded-xl mb-4 overflow-hidden flex items-center justify-center relative">
                       {slide.previewUrl ? (
                         <img
                           src={slide.previewUrl}
@@ -451,19 +451,19 @@ const StartPage: React.FC = () => {
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                         />
                       ) : (
-                        <div className="p-6 text-[8px] text-white/5 font-mono opacity-50 select-none group-hover:scale-110 transition-transform duration-700">
+                        <div className="p-6 text-[8px] text-muted-foreground font-mono opacity-50 select-none group-hover:scale-110 transition-transform duration-700">
                           {slide.title}
                         </div>
                       )}
-                      <div className="absolute inset-0 bg-gradient-to-t from-[#0c0c0e] via-transparent to-transparent opacity-60" />
-                      <Zap className="absolute bottom-3 right-3 w-5 h-5 text-white/5 group-hover:text-white/40 transition-all group-hover:rotate-12" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-secondary via-transparent to-transparent opacity-60" />
+                      <Zap className="absolute bottom-3 right-3 w-5 h-5 text-muted-foreground/5 group-hover:text-muted-foreground/40 transition-all group-hover:rotate-12" />
                     </div>
-                    <h4 className="font-bold text-lg group-hover:text-white transition-colors truncate">{slide.title}</h4>
+                    <h4 className="font-bold text-lg group-hover:text-foreground transition-colors truncate">{slide.title}</h4>
                     <div className="flex items-center justify-between mt-3">
-                      <span className="text-[10px] font-bold text-white/20 uppercase tracking-widest">
+                      <span className="text-[10px] font-bold text-muted-foreground/20 uppercase tracking-widest">
                         {slide.slideSpace?.name}
                       </span>
-                      <span className="text-[10px] font-bold text-white/20 uppercase tracking-widest">
+                      <span className="text-[10px] font-bold text-muted-foreground/20 uppercase tracking-widest">
                         {new Date(slide.updatedAt).toLocaleDateString()}
                       </span>
                     </div>
@@ -521,12 +521,12 @@ const StartPage: React.FC = () => {
       <section className="space-y-8">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <div className="p-2 bg-white/5 rounded-xl border border-white/10">
-              <Clock className="w-5 h-5 text-white/60" />
+            <div className="p-2 bg-accent/50 rounded-xl border border-border">
+              <Clock className="w-5 h-5 text-muted-foreground" />
             </div>
-            <h2 className="text-3xl font-black tracking-tight">Recent Artifacts</h2>
+            <h2 className="text-3xl font-black tracking-tight text-foreground">Recent Artifacts</h2>
           </div>
-          <button className="text-[10px] font-black uppercase tracking-widest text-white/20 hover:text-white flex items-center gap-2 transition-all">
+          <button className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/20 hover:text-foreground flex items-center gap-2 transition-all">
             MORE <ArrowRight className="w-3 h-3" />
           </button>
         </div>
@@ -541,7 +541,7 @@ const StartPage: React.FC = () => {
             <Link 
               key={`slide-${slide.id}`} 
               to={`/slide/${slide.slideSpace?.id}/${slide.id}`}
-              className="flex-shrink-0 w-[320px] bg-[#0c0c0e] border border-white/5 p-5 rounded-[24px] hover:border-white/20 transition-all group flex flex-col shadow-lg"
+              className="flex-shrink-0 w-[320px] bg-secondary border border-border p-5 rounded-[24px] hover:border-ring transition-all group flex flex-col shadow-lg"
             >
               <div className="aspect-video bg-[#18181b] rounded-xl mb-4 overflow-hidden flex items-center justify-center relative">
                 {slide.previewUrl ? (
@@ -555,15 +555,15 @@ const StartPage: React.FC = () => {
                     {slide.title}
                   </div>
                 )}
-                <div className="absolute inset-0 bg-gradient-to-t from-[#0c0c0e] via-transparent to-transparent opacity-60" />
-                <Zap className="absolute bottom-3 right-3 w-5 h-5 text-white/5 group-hover:text-white/40 transition-all group-hover:rotate-12" />
+                <div className="absolute inset-0 bg-gradient-to-t from-secondary via-transparent to-transparent opacity-60" />
+                <Zap className="absolute bottom-3 right-3 w-5 h-5 text-muted-foreground/5 group-hover:text-muted-foreground/40 transition-all group-hover:rotate-12" />
               </div>
-              <h4 className="font-bold text-lg group-hover:text-white transition-colors truncate">{slide.title}</h4>
+              <h4 className="font-bold text-lg group-hover:text-foreground transition-colors truncate">{slide.title}</h4>
               <div className="flex items-center justify-between mt-3">
-                <span className="text-[10px] font-bold text-white/20 uppercase tracking-widest">
+                <span className="text-[10px] font-bold text-muted-foreground/20 uppercase tracking-widest">
                   {slide.slideSpace?.name}
                 </span>
-                <span className="text-[10px] font-bold text-white/20 uppercase tracking-widest">
+                <span className="text-[10px] font-bold text-muted-foreground/20 uppercase tracking-widest">
                   {new Date(slide.updatedAt).toLocaleDateString()}
                 </span>
               </div>
@@ -571,7 +571,7 @@ const StartPage: React.FC = () => {
           ))}
           {recentLoading && (
             <div className="flex-shrink-0 w-[320px] flex items-center justify-center">
-              <div className="w-8 h-8 border-2 border-white/20 border-t-white/60 rounded-full animate-spin" />
+              <div className="w-8 h-8 border-2 border-muted-foreground/20 border-t-foreground rounded-full animate-spin" />
             </div>
           )}
         </div>
@@ -582,10 +582,10 @@ const StartPage: React.FC = () => {
         <section className="space-y-8">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <div className="p-2 bg-white/5 rounded-xl border border-white/10">
-                <Share2 className="w-5 h-5 text-white/60" />
+              <div className="p-2 bg-accent/50 rounded-xl border border-border">
+                <Share2 className="w-5 h-5 text-muted-foreground" />
               </div>
-              <h2 className="text-3xl font-black tracking-tight">Shared With Me</h2>
+              <h2 className="text-3xl font-black tracking-tight text-foreground">Shared With Me</h2>
             </div>
           </div>
 
@@ -599,9 +599,9 @@ const StartPage: React.FC = () => {
               <Link
                 key={`shared-${slide.id}`}
                 to={`/slide/${slide.slideSpace?.id}/${slide.id}`}
-                className="flex-shrink-0 w-[320px] bg-[#0c0c0e] border border-white/5 p-5 rounded-[24px] hover:border-white/20 transition-all group flex flex-col shadow-lg"
+                className="flex-shrink-0 w-[320px] bg-secondary border border-border p-5 rounded-[24px] hover:border-ring transition-all group flex flex-col shadow-lg"
               >
-                <div className="aspect-video bg-[#18181b] rounded-xl mb-4 overflow-hidden flex items-center justify-center relative">
+                <div className="aspect-video bg-muted rounded-xl mb-4 overflow-hidden flex items-center justify-center relative">
                   {slide.previewUrl ? (
                     <img
                       src={slide.previewUrl}
@@ -609,18 +609,18 @@ const StartPage: React.FC = () => {
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
                   ) : (
-                    <div className="p-6 text-[8px] text-white/5 font-mono opacity-50 select-none group-hover:scale-110 transition-transform duration-700">
+                    <div className="p-6 text-[8px] text-muted-foreground font-mono opacity-50 select-none group-hover:scale-110 transition-transform duration-700">
                       {slide.title}
                     </div>
                   )}
                   <div className="absolute inset-0 bg-gradient-to-t from-[#0c0c0e] via-transparent to-transparent opacity-60" />
-                  <div className="absolute top-3 left-3 px-2 py-1 bg-white/10 backdrop-blur-sm rounded-md">
-                    <span className="text-[10px] font-bold text-white/70 uppercase tracking-wider">{slide.role}</span>
+                  <div className="absolute top-3 left-3 px-2 py-1 bg-accent/50 backdrop-blur-sm rounded-md">
+                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{slide.role}</span>
                   </div>
                 </div>
-                <h4 className="font-bold text-lg group-hover:text-white transition-colors truncate">{slide.title}</h4>
+                <h4 className="font-bold text-lg group-hover:text-foreground transition-colors truncate">{slide.title}</h4>
                 <div className="flex items-center gap-2 mt-2">
-                  <span className="text-xs text-white/40">by {slide.owner?.username}</span>
+                  <span className="text-xs text-muted-foreground">by {slide.owner?.username}</span>
                 </div>
                 <div className="flex items-center justify-between mt-3">
                   <span className="text-[10px] font-bold text-white/20 uppercase tracking-widest">
@@ -634,7 +634,7 @@ const StartPage: React.FC = () => {
             ))}
             {sharedLoading && (
               <div className="flex-shrink-0 w-[320px] flex items-center justify-center">
-                <div className="w-8 h-8 border-2 border-white/20 border-t-white/60 rounded-full animate-spin" />
+                <div className="w-8 h-8 border-2 border-muted-foreground/20 border-t-foreground rounded-full animate-spin" />
               </div>
             )}
           </div>
@@ -645,10 +645,10 @@ const StartPage: React.FC = () => {
       <section className="space-y-8">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <div className="p-2 bg-white/5 rounded-xl border border-white/10">
-              <Users className="w-5 h-5 text-white/60" />
+            <div className="p-2 bg-accent/50 rounded-xl border border-border">
+              <Users className="w-5 h-5 text-muted-foreground" />
             </div>
-            <h2 className="text-3xl font-black tracking-tight">Knowledge Spaces</h2>
+            <h2 className="text-3xl font-black tracking-tight text-foreground">Knowledge Spaces</h2>
           </div>
         </div>
 
@@ -657,14 +657,14 @@ const StartPage: React.FC = () => {
             <Link 
               key={`space-${space.id}`} 
               to={`/slide/${space.id}`}
-              className="flex items-center gap-8 p-10 bg-[#0c0c0e] border border-white/5 rounded-[40px] hover:border-white/20 transition-all group shadow-lg"
+              className="flex items-center gap-8 p-10 bg-secondary border border-border rounded-[40px] hover:border-ring transition-all group shadow-lg"
             >
-              <div className="w-20 h-20 bg-[#18181b] rounded-3xl flex items-center justify-center flex-shrink-0 group-hover:bg-white/10 group-hover:scale-105 transition-all shadow-2xl">
-                <BookOpen className="w-10 h-10 text-white/20 group-hover:text-white/60 transition-colors" />
+              <div className="w-20 h-20 bg-muted rounded-3xl flex items-center justify-center flex-shrink-0 group-hover:bg-accent group-hover:scale-105 transition-all shadow-2xl">
+                <BookOpen className="w-10 h-10 text-muted-foreground/20 group-hover:text-muted-foreground/60 transition-colors" />
               </div>
               <div className="min-w-0 space-y-1">
-                <h4 className="font-black text-2xl truncate">{space.name}</h4>
-                <p className="text-white/40 font-medium truncate leading-relaxed">
+                <h4 className="font-black text-2xl truncate text-foreground">{space.name}</h4>
+                <p className="text-muted-foreground font-medium truncate leading-relaxed">
                   {space.isPublic ? 'Public Space' : 'Private Space'}
                 </p>
                 <div className="flex items-center gap-6 mt-6">
@@ -673,7 +673,7 @@ const StartPage: React.FC = () => {
                         <img key={i} src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${space.id + i}`} className="w-7 h-7 rounded-full border-4 border-[#0c0c0e]" />
                       ))}
                    </div>
-                   <span className="text-[10px] font-black text-white/20 uppercase tracking-widest">
+                   <span className="text-[10px] font-black text-muted-foreground/20 uppercase tracking-widest">
                      Created {new Date(space.createdAt).toLocaleDateString()}
                    </span>
                 </div>

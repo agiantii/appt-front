@@ -25,7 +25,7 @@ const ToastContainer: React.FC<{ toasts: Toast[]; onRemove: (id: number) => void
         <div
           key={toast.id}
           className={`flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg animate-in fade-in slide-in-from-right duration-200 ${
-            toast.type === 'success' ? 'bg-green-500/90 text-white' : 'bg-red-500/90 text-white'
+            toast.type === 'success' ? 'bg-success/90 text-white' : 'bg-destructive/90 text-white'
           }`}
         >
           {toast.type === 'success' ? <CheckCircle className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
@@ -104,17 +104,17 @@ const ExplorePage: React.FC = () => {
       <header className="flex flex-col md:flex-row md:items-end justify-between gap-8">
         <div className="space-y-2">
            <h1 className="text-5xl font-black tracking-tightest">Explore</h1>
-           <p className="text-white/40 font-medium text-lg">Discover community creations and modular extensions.</p>
+           <p className="text-muted-foreground font-medium text-lg">Discover community creations and modular extensions.</p>
         </div>
         
         <div className="relative w-full md:w-[400px]">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/20" />
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
           <input 
             type="text" 
             placeholder="Search the ecosystem..."
             value={searchKeyword}
             onChange={(e) => setSearchKeyword(e.target.value)}
-            className="w-full bg-[#18181b] border border-white/5 rounded-2xl py-3.5 pl-12 pr-6 text-sm focus:outline-none focus:ring-4 focus:ring-white/5 transition-all placeholder:text-white/20"
+            className="w-full bg-card border border-border rounded-2xl py-3.5 pl-12 pr-6 text-sm focus:outline-none focus:ring-4 focus:ring-ring/30 transition-all placeholder:text-muted-foreground"
           />
         </div>
       </header>
@@ -126,8 +126,8 @@ const ExplorePage: React.FC = () => {
             onClick={() => setFilter(cat.id as any)}
             className={`flex items-center gap-3 px-6 py-3 rounded-2xl text-xs font-black uppercase tracking-widest transition-all ${
               filter === cat.id 
-                ? 'bg-white text-black shadow-[0_0_30px_rgba(255,255,255,0.1)]' 
-                : 'bg-white/5 text-white/40 hover:bg-white/10 hover:text-white'
+                ? 'bg-primary text-primary-foreground shadow-[0_0_30px_rgba(255,255,255,0.1)]'
+                : 'bg-accent text-muted-foreground hover:bg-accent hover:text-foreground'
             }`}
           >
             <cat.icon className="w-4 h-4" />
@@ -141,25 +141,25 @@ const ExplorePage: React.FC = () => {
           <div 
             key={`${item.type}-${item.id}`} 
             onClick={() => item.type === 'slide' && navigate(`/slide/presentation/${item.id}`)}
-            className={`group bg-[#0c0c0e] border border-white/5 rounded-[32px] overflow-hidden hover:border-white/10 transition-all flex flex-col hover:shadow-2xl hover:shadow-white/5 ${item.type === 'slide' ? 'cursor-pointer' : ''}`}
+            className={`group bg-card border border-border rounded-[32px] overflow-hidden hover:border-border transition-all flex flex-col hover:shadow-2xl hover:shadow-white/5 ${item.type === 'slide' ? 'cursor-pointer' : ''}`}
           >
-            <div className="aspect-[16/11] bg-[#18181b] overflow-hidden relative">
+            <div className="aspect-[16/11] bg-card overflow-hidden relative">
               <img 
                 src={item.previewUrl || `https://picsum.photos/seed/${item.id}/400/250`} 
                 alt={item.title} 
                 className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000 opacity-60 group-hover:opacity-100"
               />
               <div className="absolute top-5 left-5">
-                <span className="px-3 py-1.5 bg-black/60 backdrop-blur-xl border border-white/10 rounded-xl text-[10px] uppercase font-black tracking-[0.2em] text-white/80">
+                <span className="px-3 py-1.5 bg-black/60 backdrop-blur-xl border border-border rounded-xl text-[10px] uppercase font-black tracking-[0.2em] text-muted-foreground">
                   {item.type}
                 </span>
               </div>
               <div className="absolute bottom-4 right-4 translate-y-2 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300">
                  <div className="flex gap-2">
-                    <button className="p-2.5 bg-white/10 backdrop-blur-md rounded-xl hover:bg-white hover:text-black transition-colors">
+                    <button className="p-2.5 bg-accent backdrop-blur-md rounded-xl hover:bg-primary hover:text-primary-foreground transition-colors">
                        <Heart className="w-4 h-4" />
                     </button>
-                    <button className="p-2.5 bg-white/10 backdrop-blur-md rounded-xl hover:bg-white hover:text-black transition-colors">
+                    <button className="p-2.5 bg-accent backdrop-blur-md rounded-xl hover:bg-primary hover:text-primary-foreground transition-colors">
                        <Share2 className="w-4 h-4" />
                     </button>
                  </div>
@@ -167,10 +167,10 @@ const ExplorePage: React.FC = () => {
             </div>
             <div className="p-6 flex flex-col flex-1">
               <div className="flex justify-between items-start mb-2">
-                <h3 className="font-bold text-lg text-white group-hover:text-white transition-colors truncate">{item.title}</h3>
-                <MoreHorizontal className="w-5 h-5 text-white/10" />
+                <h3 className="font-bold text-lg text-foreground group-hover:text-foreground transition-colors truncate">{item.title}</h3>
+                <MoreHorizontal className="w-5 h-5 text-muted-foreground" />
               </div>
-              <p className="text-sm text-white/40 font-medium">Design by <span className="text-white/60">{item.author}</span></p>
+              <p className="text-sm text-muted-foreground font-medium">Design by <span className="text-muted-foreground">{item.author}</span></p>
               {/* <div className="mt-auto pt-6 flex items-center justify-between">
                  <div className="flex -space-x-2">
                    {[1,2,3].map(i => (

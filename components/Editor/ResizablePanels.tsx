@@ -52,7 +52,7 @@ const ResizableLayout: React.FC<ResizableLayoutProps> = ({ left, center, right, 
     <div ref={containerRef} className="flex-1 flex overflow-hidden relative">
       {/* Left Sidebar */}
       {leftOpen && (
-        <div style={{ width: `${leftWidth}px` }} className="flex-shrink-0 border-r border-white/5 bg-[#09090b] flex flex-col min-w-0">
+        <div style={{ width: `${leftWidth}px` }} className="flex-shrink-0 border-r border-border bg-background flex flex-col min-w-0">
           {left}
         </div>
       )}
@@ -61,12 +61,12 @@ const ResizableLayout: React.FC<ResizableLayoutProps> = ({ left, center, right, 
       {leftOpen && (
         <div 
           onMouseDown={startResizingLeft}
-          className="w-1 hover:w-1.5 transition-all cursor-col-resize bg-transparent hover:bg-white/10 z-20 flex-shrink-0" 
+          className="w-1 hover:w-1.5 transition-all cursor-col-resize bg-transparent hover:bg-accent z-20 flex-shrink-0" 
         />
       )}
 
       {/* Editor Center */}
-      <div className="flex-1 min-w-0 flex flex-col bg-[#0c0c0e] relative">
+      <div className="flex-1 min-w-0 flex flex-col bg-card relative">
         {center}
       </div>
 
@@ -74,13 +74,13 @@ const ResizableLayout: React.FC<ResizableLayoutProps> = ({ left, center, right, 
       {rightOpen && (
         <div 
           onMouseDown={startResizingRight}
-          className="w-1 hover:w-1.5 transition-all cursor-col-resize bg-transparent hover:bg-white/10 z-20 flex-shrink-0" 
+          className="w-1 hover:w-1.5 transition-all cursor-col-resize bg-transparent hover:bg-accent z-20 flex-shrink-0" 
         />
       )}
 
       {/* Right Preview */}
       {rightOpen && (
-        <div style={{ width: `${rightWidth}%` }} className="flex-shrink-0 border-l border-white/5 bg-[#0c0c0e] flex flex-col min-w-0">
+        <div style={{ width: `${rightWidth}%` }} className="flex-shrink-0 border-l border-border bg-card flex flex-col min-w-0">
           {right}
         </div>
       )}

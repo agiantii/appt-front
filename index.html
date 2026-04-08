@@ -12,25 +12,30 @@
         theme: {
           extend: {
             colors: {
-              border: "hsl(240 3.7% 15.9%)",
-              background: "hsl(240 10% 3.9%)",
-              foreground: "hsl(0 0% 98%)",
+              border: "var(--border)",
+              background: "var(--background)",
+              foreground: "var(--foreground)",
               primary: {
-                DEFAULT: "hsl(0 0% 98%)",
-                foreground: "hsl(240 5.9% 10%)",
+                DEFAULT: "var(--primary)",
+                foreground: "var(--primary-foreground)",
               },
               secondary: {
-                DEFAULT: "hsl(240 3.7% 15.9%)",
-                foreground: "hsl(0 0% 98%)",
+                DEFAULT: "var(--secondary)",
+                foreground: "var(--secondary-foreground)",
               },
               muted: {
-                DEFAULT: "hsl(240 3.7% 15.9%)",
-                foreground: "hsl(240 5% 64.9%)",
+                DEFAULT: "var(--muted)",
+                foreground: "var(--muted-foreground)",
               },
               accent: {
-                DEFAULT: "hsl(240 3.7% 15.9%)",
-                foreground: "hsl(0 0% 98%)",
+                DEFAULT: "var(--accent)",
+                foreground: "var(--accent-foreground)",
               },
+              destructive: {
+                DEFAULT: "var(--destructive)",
+                foreground: "var(--destructive-foreground)",
+              },
+              ring: "var(--ring)",
             }
           }
         }
@@ -38,10 +43,57 @@
     </script>
     <style>
       @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+      
+      /* CSS Variables for Light Mode (default) */
+      :root {
+        --background: 0 0% 100%;
+        --foreground: 222.2 84% 4.9%;
+        --card: 0 0% 100%;
+        --card-foreground: 222.2 84% 4.9%;
+        --popover: 0 0% 100%;
+        --popover-foreground: 222.2 84% 4.9%;
+        --primary: 222.2 47.4% 11.2%;
+        --primary-foreground: 210 40% 98%;
+        --secondary: 210 40% 96.1%;
+        --secondary-foreground: 222.2 47.4% 11.2%;
+        --muted: 210 40% 96.1%;
+        --muted-foreground: 215.4 16.3% 46.9%;
+        --accent: 210 40% 96.1%;
+        --accent-foreground: 222.2 47.4% 11.2%;
+        --destructive: 0 84.2% 60.2%;
+        --destructive-foreground: 210 40% 98%;
+        --border: 214.3 31.8% 91.4%;
+        --input: 214.3 31.8% 91.4%;
+        --ring: 222.2 84% 4.9%;
+      }
+
+      /* CSS Variables for Dark Mode (更深的Claude风格) */
+      .dark {
+        --background: 240 10% 2%;
+        --foreground: 0 0% 98%;
+        --card: 240 10% 2%;
+        --card-foreground: 0 0% 98%;
+        --popover: 240 10% 2%;
+        --popover-foreground: 0 0% 98%;
+        --primary: 0 0% 98%;
+        --primary-foreground: 240 5.9% 10%;
+        --secondary: 240 5% 8%;
+        --secondary-foreground: 0 0% 98%;
+        --muted: 240 5% 8%;
+        --muted-foreground: 240 5% 55%;
+        --accent: 240 5% 8%;
+        --accent-foreground: 0 0% 98%;
+        --destructive: 0 62.8% 30.6%;
+        --destructive-foreground: 0 0% 100%;
+        --border: 240 5% 12%;
+        --input: 240 5% 10%;
+        --ring: 240 4.9% 83.9%;
+      }
+
       body {
         font-family: 'Inter', sans-serif;
-        background-color: #09090b;
-        color: #fafafa;
+        background-color: hsl(var(--background));
+        color: hsl(var(--foreground));
         overflow: hidden;
       }
       ::-webkit-scrollbar {
@@ -52,11 +104,11 @@
         background: transparent;
       }
       ::-webkit-scrollbar-thumb {
-        background: #27272a;
+        background: var(--muted-foreground);
         border-radius: 10px;
       }
       ::-webkit-scrollbar-thumb:hover {
-        background: #3f3f46;
+        background: var(--foreground);
       }
       /* CodeMirror Overrides */
       .cm-editor {

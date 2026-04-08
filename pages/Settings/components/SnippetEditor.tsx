@@ -5,6 +5,7 @@ import { markdown } from '@codemirror/lang-markdown';
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
 import { bracketMatching, syntaxHighlighting, defaultHighlightStyle } from '@codemirror/language';
 import { Snippet } from '../../../types';
+import { useTheme } from '../../../contexts/ThemeContext';
 
 interface SnippetEditorProps {
   snippet: Snippet;
@@ -15,6 +16,8 @@ export interface SnippetEditorRef {
 }
 
 const SnippetEditor = forwardRef<SnippetEditorRef, SnippetEditorProps>(({ snippet }, ref) => {
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
   const containerRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
 
@@ -34,9 +37,16 @@ const SnippetEditor = forwardRef<SnippetEditorRef, SnippetEditorProps>(({ snippe
       keymap.of([...defaultKeymap, ...historyKeymap]),
       markdown(),
       EditorView.theme({
-        "&": { backgroundColor: "#09090b", color: "#e4e4e7" },
-        ".cm-gutters": { backgroundColor: "#0c0c0e", color: "#3f3f46", border: "none" }
-      }, { dark: true })
+        "&": { 
+          backgroundColor: isDark ? "#09090b" : "#ffffff",
+          color: isDark ? "#e4e4e7" : "#18181b"
+        },
+        ".cm-gutters": { 
+          backgroundColor: isDark ? "#0c0c0e" : "#f9fafb",
+          color: isDark ? "#3f3f46" : "#6b7280",
+          border: "none"
+        }
+      }, { dark: isDark })
     ];
 
     const state = EditorState.create({
@@ -54,7 +64,9 @@ const SnippetEditor = forwardRef<SnippetEditorRef, SnippetEditorProps>(({ snippe
   }, [snippet.id]);
 
   return (
-    <div ref={containerRef} className="border border-white/10 rounded-xl overflow-hidden min-h-[300px]" />
+    <div ref={containerRef} className={`border rounded-xl overflow-hidden min-h-[300px] ${
+      isDark ? 'border-white/10' : 'border-gray-200'
+    }`} />
   );
 });
 

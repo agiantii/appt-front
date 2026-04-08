@@ -26,7 +26,7 @@ const ToastContainer: React.FC<{ toasts: Toast[]; onRemove: (id: number) => void
         <div
           key={toast.id}
           className={`flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg animate-in fade-in slide-in-from-right duration-200 ${
-            toast.type === 'success' ? 'bg-green-500/90 text-white' : 'bg-red-500/90 text-white'
+            toast.type === 'success' ? 'bg-success/90 text-foreground' : 'bg-destructive/90 text-foreground'
           }`}
         >
           {toast.type === 'success' ? <CheckCircle className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
@@ -51,27 +51,27 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({ isOpen, onClose, onConfirm,
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-[400px] bg-[#1c1c1f] border border-white/10 rounded-2xl shadow-2xl animate-in fade-in zoom-in-95 duration-200">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-white/5">
-          <h3 className="text-sm font-semibold text-white/90">{title}</h3>
-          <button onClick={onClose} className="p-1.5 hover:bg-white/10 rounded-lg text-white/40 hover:text-white transition-colors">
+      <div className="absolute inset-0 bg-background/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative w-[400px] bg-card border border-border rounded-2xl shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+          <h3 className="text-sm font-semibold text-foreground/90">{title}</h3>
+          <button onClick={onClose} className="p-1.5 hover:bg-accent rounded-lg text-muted-foreground hover:text-foreground transition-colors">
             <X className="w-4 h-4" />
           </button>
         </div>
         <div className="px-5 py-5">
-          <p className="text-sm text-white/70 leading-relaxed">{message}</p>
+          <p className="text-sm text-foreground/70 leading-relaxed">{message}</p>
         </div>
-        <div className="flex items-center justify-end gap-3 px-5 py-4 border-t border-white/5">
+        <div className="flex items-center justify-end gap-3 px-5 py-4 border-t border-border">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-xs font-medium text-white/60 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
+            className="px-4 py-2 text-xs font-medium text-foreground/60 hover:text-foreground hover:bg-accent rounded-lg transition-colors"
           >
             Cancel
           </button>
           <button
             onClick={onConfirm}
-            className="px-4 py-2 text-xs font-medium bg-red-500 text-white hover:bg-red-600 rounded-lg transition-colors"
+            className="px-4 py-2 text-xs font-medium bg-destructive text-foreground hover:bg-destructive/90 rounded-lg transition-colors"
           >
             Delete
           </button>
@@ -114,26 +114,26 @@ const BasicSettings: React.FC<BasicSettingsProps> = ({ slideSpaceId, space, onSp
     <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
       <div>
         <h1 className="text-3xl font-bold tracking-tight mb-2">Basic Settings</h1>
-        <p className="text-white/40">Update your space profile and visibility.</p>
+        <p className="text-muted-foreground">Update your space profile and visibility.</p>
       </div>
 
       <div className="space-y-6">
         <div className="space-y-2">
           <label className="text-sm font-medium">Space Name</label>
           <input 
-            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-white/10 transition-all" 
+            className="w-full bg-accent border border-border rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-white/10 transition-all" 
             value={formData.name} 
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
           />
         </div>
-        <div className="flex items-center justify-between p-4 bg-white/5 border border-white/10 rounded-xl">
+        <div className="flex items-center justify-between p-4 bg-accent border border-border rounded-xl">
           <div>
             <div className="text-sm font-medium">Public Visibility</div>
-            <div className="text-xs text-white/30">Allow anyone to view this space.</div>
+            <div className="text-xs text-muted-foreground/50">Allow anyone to view this space.</div>
           </div>
           <button 
             onClick={() => setFormData({ ...formData, isPublic: !formData.isPublic })}
-            className={`w-12 h-6 rounded-full transition-all relative ${formData.isPublic ? 'bg-white' : 'bg-white/10'}`}
+            className={`w-12 h-6 rounded-full transition-all relative ${formData.isPublic ? 'bg-white' : 'bg-accent'}`}
           >
             <div className={`absolute top-1 w-4 h-4 rounded-full transition-all ${formData.isPublic ? 'right-1 bg-black' : 'left-1 bg-white/40'}`} />
           </button>
@@ -187,49 +187,49 @@ const SlideEditModal: React.FC<SlideEditModalProps> = ({ isOpen, onClose, slide,
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-[400px] bg-[#1c1c1f] border border-white/10 rounded-2xl shadow-2xl animate-in fade-in zoom-in-95 duration-200">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-white/5">
-          <h3 className="text-sm font-semibold text-white/90">Edit Document</h3>
-          <button onClick={onClose} className="p-1.5 hover:bg-white/10 rounded-lg text-white/40 hover:text-white transition-colors">
+      <div className="absolute inset-0 bg-background/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative w-[400px] bg-card border border-border rounded-2xl shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+          <h3 className="text-sm font-semibold text-foreground/90">Edit Document</h3>
+          <button onClick={onClose} className="p-1.5 hover:bg-accent rounded-lg text-muted-foreground hover:text-foreground transition-colors">
             <X className="w-4 h-4" />
           </button>
         </div>
         <div className="px-5 py-5 space-y-4">
           <div className="space-y-2">
-            <label className="text-xs font-medium text-white/50 uppercase tracking-wider">Title</label>
+            <label className="text-xs font-medium text-foreground/50 uppercase tracking-wider">Title</label>
             <input
               type="text"
               value={formData.title}
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
               onKeyDown={(e) => e.key === 'Enter' && handleSave()}
-              className="w-full bg-[#0c0c0e] border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white/90 focus:outline-none focus:border-white/30"
+              className="w-full bg-[#0c0c0e] border border-border rounded-lg px-3 py-2.5 text-sm text-foreground/90 focus:outline-none focus:border-white/30"
               autoFocus
             />
           </div>
-          <div className="flex items-center justify-between p-3 bg-white/5 border border-white/10 rounded-lg">
+          <div className="flex items-center justify-between p-3 bg-accent border border-border rounded-lg">
             <span className="text-sm">Public</span>
             <button
               onClick={() => setFormData({ ...formData, isPublic: !formData.isPublic })}
-              className={`w-10 h-5 rounded-full transition-all relative ${formData.isPublic ? 'bg-white' : 'bg-white/10'}`}
+              className={`w-10 h-5 rounded-full transition-all relative ${formData.isPublic ? 'bg-white' : 'bg-accent'}`}
             >
               <div className={`absolute top-0.5 w-4 h-4 rounded-full transition-all ${formData.isPublic ? 'right-0.5 bg-black' : 'left-0.5 bg-white/40'}`} />
             </button>
           </div>
-          <div className="flex items-center justify-between p-3 bg-white/5 border border-white/10 rounded-lg">
+          <div className="flex items-center justify-between p-3 bg-accent border border-border rounded-lg">
             <span className="text-sm">Allow Comments</span>
             <button
               onClick={() => setFormData({ ...formData, allowComment: !formData.allowComment })}
-              className={`w-10 h-5 rounded-full transition-all relative ${formData.allowComment ? 'bg-white' : 'bg-white/10'}`}
+              className={`w-10 h-5 rounded-full transition-all relative ${formData.allowComment ? 'bg-white' : 'bg-accent'}`}
             >
               <div className={`absolute top-0.5 w-4 h-4 rounded-full transition-all ${formData.allowComment ? 'right-0.5 bg-black' : 'left-0.5 bg-white/40'}`} />
             </button>
           </div>
         </div>
-        <div className="flex items-center justify-end gap-3 px-5 py-4 border-t border-white/5">
+        <div className="flex items-center justify-end gap-3 px-5 py-4 border-t border-border">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-xs font-medium text-white/60 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
+            className="px-4 py-2 text-xs font-medium text-foreground/60 hover:text-foreground hover:bg-accent rounded-lg transition-colors"
           >
             Cancel
           </button>
@@ -282,37 +282,37 @@ const DocumentManagement: React.FC<DocumentManagementProps> = ({ slideSpaceId, s
     <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
       <div>
         <h1 className="text-3xl font-bold tracking-tight mb-2">Document Management</h1>
-        <p className="text-white/40">Manage and update documents in this space.</p>
+        <p className="text-muted-foreground">Manage and update documents in this space.</p>
       </div>
       
-      <div className="border border-white/10 rounded-2xl overflow-hidden bg-white/5">
+      <div className="border border-border rounded-2xl overflow-hidden bg-accent">
         <table className="w-full text-left text-sm">
-          <thead className="bg-white/5 border-b border-white/10">
+          <thead className="bg-accent border-b border-border">
             <tr>
-              <th className="px-6 py-4 font-semibold text-white/40 uppercase tracking-widest text-[10px]">Title</th>
-              <th className="px-6 py-4 font-semibold text-white/40 uppercase tracking-widest text-[10px]">Status</th>
-              <th className="px-6 py-4 font-semibold text-white/40 uppercase tracking-widest text-[10px]">Comments</th>
-              <th className="px-6 py-4 font-semibold text-white/40 uppercase tracking-widest text-[10px]">Updated</th>
-              <th className="px-6 py-4 font-semibold text-white/40 uppercase tracking-widest text-[10px]"></th>
+              <th className="px-6 py-4 font-semibold text-muted-foreground uppercase tracking-widest text-[10px]">Title</th>
+              <th className="px-6 py-4 font-semibold text-muted-foreground uppercase tracking-widest text-[10px]">Status</th>
+              <th className="px-6 py-4 font-semibold text-muted-foreground uppercase tracking-widest text-[10px]">Comments</th>
+              <th className="px-6 py-4 font-semibold text-muted-foreground uppercase tracking-widest text-[10px]">Updated</th>
+              <th className="px-6 py-4 font-semibold text-muted-foreground uppercase tracking-widest text-[10px]"></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-white/10">
             {slides.map(slide => (
-              <tr key={slide.id} className="hover:bg-white/5 transition-colors group">
+              <tr key={slide.id} className="hover:bg-accent transition-colors group">
                 <td className="px-6 py-4 font-medium">{slide.title}</td>
                 <td className="px-6 py-4">
-                  <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-widest ${slide.isPublic ? 'bg-green-500/20 text-green-400' : 'bg-white/10 text-white/40'}`}>
+                  <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-widest ${slide.isPublic ? 'bg-success/20 text-success' : 'bg-accent text-muted-foreground'}`}>
                     {slide.isPublic ? 'Public' : 'Private'}
                   </span>
                 </td>
-                <td className="px-6 py-4 text-white/40">{slide.allowComment ? 'Enabled' : 'Disabled'}</td>
-                <td className="px-6 py-4 text-white/40">{new Date(slide.updatedAt).toLocaleDateString()}</td>
+                <td className="px-6 py-4 text-muted-foreground">{slide.allowComment ? 'Enabled' : 'Disabled'}</td>
+                <td className="px-6 py-4 text-muted-foreground">{new Date(slide.updatedAt).toLocaleDateString()}</td>
                 <td className="px-6 py-4 text-right">
                   <button 
                     onClick={() => handleEditClick(slide)}
-                    className="p-1 hover:bg-white/10 rounded transition-all opacity-0 group-hover:opacity-100"
+                    className="p-1 hover:bg-accent rounded transition-all opacity-0 group-hover:opacity-100"
                   >
-                    <MoreHorizontal className="w-4 h-4 text-white/30" />
+                    <MoreHorizontal className="w-4 h-4 text-muted-foreground/50" />
                   </button>
                 </td>
               </tr>
@@ -347,12 +347,12 @@ const SettingsSidebar: React.FC<SettingsSidebarProps> = ({ slideSpaceId, onDelet
   ];
 
   return (
-    <aside className="w-64 border-r border-white/5 bg-[#0c0c0e] flex flex-col p-6">
-      <Link to={`/slide/${slideSpaceId}`} className="flex items-center gap-2 text-white/40 hover:text-white text-sm transition-colors mb-10">
+    <aside className="w-64 border-r border-border bg-card flex flex-col p-6">
+      <Link to={`/slide/${slideSpaceId}`} className="flex items-center gap-2 text-muted-foreground hover:text-foreground text-sm transition-colors mb-10">
         <ArrowLeft className="w-4 h-4" /> Back to Space
       </Link>
       
-      <h2 className="text-xs font-bold text-white/30 uppercase tracking-widest mb-6 px-3">Space Settings</h2>
+      <h2 className="text-xs font-bold text-muted-foreground/50 uppercase tracking-widest mb-6 px-3">Space Settings</h2>
       <nav className="space-y-1">
         {sidebarLinks.map(link => {
           const fullPath = `/slide/${slideSpaceId}/settings/${link.path}`;
@@ -362,10 +362,10 @@ const SettingsSidebar: React.FC<SettingsSidebarProps> = ({ slideSpaceId, onDelet
               key={link.path}
               to={fullPath}
               className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-                isActive ? 'bg-white text-black shadow-lg shadow-white/5' : 'text-white/50 hover:text-white hover:bg-white/5'
+                isActive ? 'bg-white text-black shadow-lg shadow-white/5' : 'text-foreground/50 hover:text-foreground hover:bg-accent'
               }`}
             >
-              <link.icon className={`w-4 h-4 ${isActive ? 'text-black' : 'text-white/30'}`} />
+              <link.icon className={`w-4 h-4 ${isActive ? 'text-black' : 'text-muted-foreground/50'}`} />
               {link.label}
             </Link>
           );
@@ -446,11 +446,11 @@ const SpaceSettings: React.FC = () => {
     }
   };
 
-  if (loading) return <div className="flex items-center justify-center h-full text-white/40">Loading settings...</div>;
+  if (loading) return <div className="flex items-center justify-center h-full text-muted-foreground">Loading settings...</div>;
   if (!space) return <div>Space not found</div>;
 
   return (
-    <div className="flex h-screen bg-[#09090b] text-white">
+    <div className="flex h-screen bg-background text-foreground">
       <SettingsSidebar slideSpaceId={slideSpaceId!} onDeleteClick={() => setIsDeleteModalOpen(true)} />
 
       <main className="flex-1 p-12 overflow-y-auto max-w-4xl">

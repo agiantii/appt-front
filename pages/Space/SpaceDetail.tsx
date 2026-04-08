@@ -27,7 +27,7 @@ const ToastContainer: React.FC<{ toasts: Toast[]; onRemove: (id: number) => void
         <div
           key={toast.id}
           className={`flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg animate-in fade-in slide-in-from-right duration-200 ${
-            toast.type === 'success' ? 'bg-green-500/90 text-white' : 'bg-red-500/90 text-white'
+            toast.type === 'success' ? 'bg-success/90 text-success-foreground' : 'bg-destructive/90 text-destructive-foreground'
           }`}
         >
           {toast.type === 'success' ? <CheckCircle className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
@@ -89,11 +89,11 @@ const SpaceDetail: React.FC = () => {
     return buildTree(slides.filter(s => s.title.toLowerCase().includes(searchQuery.toLowerCase())));
   }, [slides, searchQuery]);
 
-  if (loading) return <div className="flex items-center justify-center h-full text-white/40">Loading space...</div>;
+  if (loading) return <div className="flex items-center justify-center h-full text-muted-foreground">Loading space...</div>;
 
   if (!space) return (
-    <div className="flex items-center justify-center h-full text-white/40">
-      Space not found. <Link to="/dashboard" className="ml-2 text-white hover:underline">Go back</Link>
+    <div className="flex items-center justify-center h-full text-muted-foreground">
+      Space not found. <Link to="/dashboard" className="ml-2 text-foreground hover:underline">Go back</Link>
     </div>
   );
 
@@ -134,8 +134,8 @@ const SpaceDetail: React.FC = () => {
 
     return (
       <div className="flex flex-col">
-        <div 
-          className="group flex items-center hover:bg-white/[0.03] transition-colors py-2 px-4 cursor-pointer"
+        <div
+          className="group flex items-center bg-transparent even:bg-accent/20 hover:bg-accent transition-colors py-2 px-4 cursor-pointer"
           style={{ paddingLeft: `${level * 24 + 16}px` }}
         >
           {/* 展开/折叠按钮 */}
@@ -144,9 +144,9 @@ const SpaceDetail: React.FC = () => {
               e.stopPropagation();
               toggleNode(node.id);
             }}
-            className={`p-0.5 hover:bg-white/10 rounded transition-opacity mr-1 ${hasChildren ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+            className={`p-0.5 hover:bg-accent rounded transition-opacity mr-1 ${hasChildren ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
           >
-            {isExpanded ? <ChevronDown className="w-3.5 h-3.5 text-white/40" /> : <ChevronRight className="w-3.5 h-3.5 text-white/40" />}
+            {isExpanded ? <ChevronDown className="w-3.5 h-3.5 text-muted-foreground/80" /> : <ChevronRight className="w-3.5 h-3.5 text-muted-foreground/80" />}
           </button>
           
           {/* 标题区域 - 点击跳转编辑页 */}
@@ -154,11 +154,11 @@ const SpaceDetail: React.FC = () => {
             className="flex items-center gap-3 flex-1 min-w-0"
             onClick={() => navigate(`/slide/${slideSpaceId}/${node.id}`)}
           >
-            <FileText className={`w-3.5 h-3.5 ${hasChildren ? 'text-white/40' : 'text-white/20'}`} />
-            <span className={`text-sm ${hasChildren ? 'text-white/80 font-medium' : 'text-white/60'} truncate`}>
+            <FileText className="w-3.5 h-3.5 text-muted-foreground/80" />
+            <span className={`text-sm ${hasChildren ? 'text-foreground font-medium' : 'text-foreground/90'} truncate`}>
               {node.title}
             </span>
-            <div className="flex-1 border-b border-dotted border-white/5 mx-4 min-w-[20px]" />
+            <div className="flex-1 border-b border-dotted border-border/70 mx-4 min-w-[20px]" />
           </div>
           
           {/* 操作按钮 */}
@@ -168,7 +168,7 @@ const SpaceDetail: React.FC = () => {
                 e.stopPropagation();
                 navigate(`/slide/${slideSpaceId}/${node.id}`);
               }}
-              className="p-1.5 hover:bg-white/10 text-white/40 hover:text-white rounded transition-colors"
+              className="p-1.5 hover:bg-accent text-muted-foreground/80 hover:text-foreground rounded transition-colors"
               title="编辑"
             >
               <Pencil className="w-3.5 h-3.5" />
@@ -178,14 +178,14 @@ const SpaceDetail: React.FC = () => {
                 e.stopPropagation();
                 navigate(`/slide/presentation/${node.id}`);
               }}
-              className="p-1.5 hover:bg-white/10 text-white/40 hover:text-green-400 rounded transition-colors"
+              className="p-1.5 hover:bg-accent text-muted-foreground/80 hover:text-success rounded transition-colors"
               title="演示"
             >
               <Play className="w-3.5 h-3.5" />
             </button>
           </div>
           
-          <div className="text-[11px] font-mono text-white/20 group-hover:text-white/40 transition-colors whitespace-nowrap">
+          <div className="text-[11px] font-mono text-muted-foreground/80 group-hover:text-foreground transition-colors whitespace-nowrap">
             {new Date(node.updatedAt).toLocaleDateString()}
           </div>
         </div>
@@ -201,20 +201,20 @@ const SpaceDetail: React.FC = () => {
   };
 
   return (
-    <div className="flex h-screen bg-[#09090b] text-white">
+    <div className="flex h-screen bg-background text-foreground">
       {/* Space Sidebar */}
-      <aside className="w-80 border-r border-white/5 flex flex-col bg-[#0c0c0e] relative z-20">
+      <aside className="w-80 border-r border-border flex flex-col bg-card relative z-20">
         <div className="p-8 pb-4">
-          <Link to="/dashboard" className="flex items-center gap-3 text-white/30 hover:text-white text-xs font-black uppercase tracking-widest transition-all mb-10 group">
+          <Link to="/dashboard" className="flex items-center gap-3 text-muted-foreground hover:text-foreground text-xs font-black uppercase tracking-widest transition-all mb-10 group">
             <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
             Home
           </Link>
           <div className="flex items-start justify-between mb-2">
             <div className="flex flex-col min-w-0">
-               <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em] mb-1">Active Space</span>
-               <h1 className="text-2xl font-black tracking-tight text-white/90 truncate pr-2" title={space.name}>{space.name}</h1>
+               <span className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] mb-1">Active Space</span>
+               <h1 className="text-2xl font-black tracking-tight text-foreground truncate pr-2" title={space.name}>{space.name}</h1>
             </div>
-            <Link to={`/slide/${slideSpaceId}/settings`} className="p-2.5 bg-white/5 border border-white/10 hover:bg-white/10 rounded-2xl text-white/40 hover:text-white transition-all">
+            <Link to={`/slide/${slideSpaceId}/settings`} className="p-2.5 bg-accent border border-border hover:bg-accent/80 rounded-2xl text-muted-foreground hover:text-foreground transition-all">
               <Settings className="w-4 h-4" />
             </Link>
           </div>
@@ -231,10 +231,10 @@ const SpaceDetail: React.FC = () => {
           />
         </div>
 
-        <div className="p-6 border-t border-white/5 bg-[#0c0c0e]/80 backdrop-blur-md">
+        <div className="p-6 border-t border-border bg-card/80 backdrop-blur-md">
           <button 
             onClick={() => handleAddSlide(null)}
-            className="w-full flex items-center justify-center gap-3 py-4 bg-white text-black rounded-[20px] text-xs font-black uppercase tracking-widest hover:bg-white/90 transition-all shadow-2xl shadow-white/5 group active:scale-95"
+            className="w-full flex items-center justify-center gap-3 py-4 bg-primary text-primary-foreground rounded-[20px] text-xs font-black uppercase tracking-widest hover:bg-primary/90 transition-all shadow-2xl shadow-primary/5 group active:scale-95"
           >
             <Plus className="w-4 h-4 stroke-[3px]" />
             New Document
@@ -243,44 +243,44 @@ const SpaceDetail: React.FC = () => {
       </aside>
 
       {/* Content Area */}
-      <main className="flex-1 overflow-y-auto bg-[#09090b] relative flex flex-col">
-        <header className="sticky top-0 z-10 bg-[#09090b]/80 backdrop-blur-xl border-b border-white/5 p-8 flex flex-col gap-8">
+      <main className="flex-1 overflow-y-auto bg-background relative flex flex-col">
+        <header className="sticky top-0 z-10 bg-background/80 backdrop-blur-xl border-b border-border p-8 flex flex-col gap-8">
           <div className="flex items-center justify-between">
-             <div className="flex items-center gap-3 text-[10px] font-black text-white/30 uppercase tracking-[0.2em]">
+             <div className="flex items-center gap-3 text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">
                 <FolderOpen className="w-4 h-4" />
                 <span>Spaces</span>
                 <ChevronRight className="w-3 h-3" />
-                <span className="text-white/70">{space.name}</span>
+                <span className="text-foreground">{space.name}</span>
              </div>
           </div>
 
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div className="relative w-full max-w-xl group">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/20 group-focus-within:text-white transition-colors" />
-              <input 
-                type="text" 
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground group-focus-within:text-foreground transition-colors" />
+              <input
+                type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search presentations, templates, nodes..."
-                className="w-full bg-[#18181b] border border-white/5 rounded-2xl py-3.5 pl-12 pr-6 text-sm focus:outline-none focus:ring-4 focus:ring-white/5 transition-all text-white placeholder:text-white/20"
+                className="w-full bg-card border border-border rounded-2xl py-3.5 pl-12 pr-6 text-sm focus:outline-none focus:ring-4 focus:ring-ring/20 transition-all text-foreground placeholder:text-muted-foreground"
               />
             </div>
             <div className="flex items-center gap-3">
-              <div className="bg-[#18181b] p-1.5 rounded-2xl flex border border-white/5">
+              <div className="bg-card p-1.5 rounded-2xl flex border border-border">
                 <button 
                   onClick={() => setViewMode('grid')}
-                  className={`p-2 rounded-xl transition-all ${viewMode === 'grid' ? 'bg-white text-black shadow-xl' : 'text-white/20 hover:text-white/40'}`}
+                  className={`p-2 rounded-xl transition-all ${viewMode === 'grid' ? 'bg-primary text-primary-foreground shadow-xl' : 'text-muted-foreground hover:text-foreground'}`}
                 >
                   <LayoutGrid className="w-5 h-5" />
                 </button>
                 <button 
                   onClick={() => setViewMode('list')}
-                  className={`p-2 rounded-xl transition-all ${viewMode === 'list' ? 'bg-white text-black shadow-xl' : 'text-white/20 hover:text-white/40'}`}
+                  className={`p-2 rounded-xl transition-all ${viewMode === 'list' ? 'bg-primary text-primary-foreground shadow-xl' : 'text-muted-foreground hover:text-foreground'}`}
                 >
                   <List className="w-5 h-5" />
                 </button>
               </div>
-              <button className="flex items-center gap-3 px-6 py-3 bg-[#18181b] hover:bg-white/10 border border-white/5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all text-white/40 hover:text-white">
+              <button className="flex items-center gap-3 px-6 py-3 bg-card hover:bg-accent border border-border rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all text-muted-foreground hover:text-foreground">
                 <Filter className="w-4 h-4" /> Sort: Recently Edited
               </button>
             </div>
@@ -291,9 +291,9 @@ const SpaceDetail: React.FC = () => {
           {viewMode === 'list' ? (
             <div className="max-w-5xl mx-auto py-8">
               {treeData.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-80 text-white/5 border border-dashed border-white/10 rounded-[48px]">
-                  <Search className="w-20 h-20 mb-6 stroke-[1px]" />
-                  <p className="text-lg font-black uppercase tracking-widest">Workspace is silent</p>
+                <div className="flex flex-col items-center justify-center h-80 text-muted-foreground/30 border border-dashed border-border rounded-[48px]">
+                  <Search className="w-20 h-20 mb-6 stroke-[1px] text-muted-foreground/30" />
+                  <p className="text-lg font-black uppercase tracking-widest text-muted-foreground/50">Workspace is silent</p>
                 </div>
               ) : (
                 <div className="space-y-0.5">
@@ -306,19 +306,19 @@ const SpaceDetail: React.FC = () => {
           ) : (
             <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-10`}>
               {slides.filter(s => s.title.toLowerCase().includes(searchQuery.toLowerCase())).map(slide => (
-                <div 
+                <div
                   key={slide.id}
-                  className={`group bg-[#0c0c0e] border border-white/5 rounded-[40px] overflow-hidden hover:border-white/20 transition-all flex flex-col shadow-lg hover:shadow-[0_40px_80px_-20px_rgba(0,0,0,0.6)] relative cursor-pointer`}
+                  className="group bg-card border border-border rounded-[40px] overflow-hidden hover:border-ring transition-all flex flex-col shadow-lg hover:shadow-[0_40px_80px_-20px_rgba(0,0,0,0.6)] relative cursor-pointer"
                   onClick={() => navigate(`/slide/presentation/${slide.id}`)}
                 >
-                  <div className="aspect-[16/10] bg-[#18181b] relative group-hover:bg-[#1c1c1f] transition-colors flex items-center justify-center overflow-hidden">
+                  <div className="aspect-[16/10] bg-card relative group-hover:bg-accent transition-colors flex items-center justify-center overflow-hidden">
                      {/* 更多按钮 - 点击跳转到编辑页 */}
                      <div className="absolute top-5 right-5 opacity-0 group-hover:opacity-100 transition-all duration-300 z-10 translate-y-2 group-hover:translate-y-0">
-                        <button 
-                          className="p-3 bg-black/80 rounded-2xl backdrop-blur-xl border border-white/10 hover:bg-white hover:text-black transition-all" 
-                          onClick={(e) => { 
-                            e.preventDefault(); 
-                            e.stopPropagation(); 
+                        <button
+                          className="p-3 bg-background/80 rounded-2xl backdrop-blur-xl border border-border hover:bg-foreground hover:text-background transition-all"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
                             navigate(`/slide/${slideSpaceId}/${slide.id}`);
                           }}
                           title="编辑"
@@ -336,23 +336,23 @@ const SpaceDetail: React.FC = () => {
                        />
                      ) : (
                        <>
-                         <div className="p-10 text-[6px] font-mono text-white/5 group-hover:text-white/10 transition-all duration-700 select-none scale-110 group-hover:scale-100">
+                         <div className="p-10 text-[6px] font-mono text-muted-foreground/40 group-hover:text-muted-foreground/60 transition-all duration-700 select-none scale-110 group-hover:scale-100">
                            {(slide.content || '').slice(0, 800)}
                          </div>
-                         <ZapIcon className="absolute w-12 h-12 text-white/5 group-hover:text-white/10 transition-all group-hover:scale-110 group-hover:rotate-6" />
+                         <ZapIcon className="absolute w-12 h-12 text-muted-foreground/40 group-hover:text-muted-foreground/60 transition-all group-hover:scale-110 group-hover:rotate-6" />
                        </>
                      )}
-                     <div className="absolute inset-0 bg-gradient-to-t from-[#0c0c0e] via-transparent to-transparent opacity-40" />
+                     <div className="absolute inset-0 bg-gradient-to-t from-card via-transparent to-transparent opacity-40" />
                   </div>
                   <div className="p-8">
-                    <h3 className="font-black text-xl text-white/90 group-hover:text-white transition-colors truncate mb-4" title={slide.title}>{slide.title}</h3>
+                    <h3 className="font-black text-xl text-foreground/90 group-hover:text-foreground transition-colors truncate mb-4" title={slide.title}>{slide.title}</h3>
                     <div className="flex items-center justify-between">
                       <div className="flex flex-col">
-                        <span className="text-[10px] text-white/20 font-black uppercase tracking-widest">Last Update</span>
-                        <span className="text-xs font-bold text-white/40">{new Date(slide.updatedAt).toLocaleDateString()}</span>
+                        <span className="text-[10px] text-muted-foreground font-black uppercase tracking-widest">Last Update</span>
+                        <span className="text-xs font-bold text-muted-foreground">{new Date(slide.updatedAt).toLocaleDateString()}</span>
                       </div>
                       <div className="flex -space-x-2">
-                        <img src={`https://api.dicebear.com/7.x/initials/svg?seed=${slide.id}`} className="w-7 h-7 rounded-full border-2 border-[#0c0c0e]" />
+                        <img src={`https://api.dicebear.com/7.x/initials/svg?seed=${slide.id}`} className="w-7 h-7 rounded-full border-2 border-card" />
                       </div>
                     </div>
                   </div>

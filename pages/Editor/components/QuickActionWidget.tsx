@@ -189,20 +189,20 @@ export const QuickActionWidget: React.FC<QuickActionWidgetProps> = ({
 
   return (
     <div
-      className="fixed z-[200] w-[460px] bg-[#1a1a1f] border border-white/10 rounded-xl shadow-2xl shadow-black/50 backdrop-blur-xl"
+      className="fixed z-[200] w-[460px] bg-card border border-border rounded-xl shadow-2xl shadow-black/50 backdrop-blur-xl"
       style={{ top: position.top, left: position.left }}
       onClick={(e) => e.stopPropagation()}
     >
       {/* Header */}
-      <div className="flex items-center gap-2 px-3 py-2 border-b border-white/5">
-        <Sparkles className="w-3.5 h-3.5 text-violet-400" />
-        <span className="text-[10px] font-bold text-white/50 uppercase tracking-widest">AI Assistant</span>
-        <span className="text-[10px] text-white/20 ml-auto">Ctrl+I</span>
+      <div className="flex items-center gap-2 px-3 py-2 border-b border-border">
+        <Sparkles className="w-3.5 h-3.5 text-primary" />
+        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">AI Assistant</span>
+        <span className="text-[10px] text-muted-foreground ml-auto">Ctrl+I</span>
       </div>
 
       {/* Input */}
       <div className="px-3 pt-2 pb-1">
-        <div className="flex items-center gap-2 bg-black/30 rounded-lg border border-white/10 focus-within:border-violet-500/50 transition-colors">
+        <div className="flex items-center gap-2 bg-accent rounded-lg border border-border focus-within:border-primary/50 transition-colors">
           <input
             ref={inputRef}
             value={input}
@@ -214,12 +214,12 @@ export const QuickActionWidget: React.FC<QuickActionWidgetProps> = ({
             autoCorrect="off"
             autoCapitalize="off"
             spellCheck="false"
-            className="flex-1 bg-transparent px-3 py-2 text-xs text-white/90 placeholder:text-white/30 outline-none disabled:opacity-50"
+            className="flex-1 bg-transparent px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground outline-none disabled:opacity-50"
           />
           <button
             onClick={handleSubmit}
             disabled={loading || done || !input.trim()}
-            className="p-1.5 mr-1 text-white/40 hover:text-violet-400 disabled:opacity-30 transition-colors"
+            className="p-1.5 mr-1 text-muted-foreground hover:text-primary disabled:opacity-30 transition-colors"
           >
             {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <SendHorizonal className="w-3.5 h-3.5" />}
           </button>
@@ -229,21 +229,21 @@ export const QuickActionWidget: React.FC<QuickActionWidgetProps> = ({
       {/* Slash command suggestions */}
       {showSuggestions && filteredCommands.length > 0 && (
         <div className="px-3 pb-1">
-          <div className="bg-black/20 rounded-lg border border-white/5 overflow-hidden">
+          <div className="bg-accent rounded-lg border border-border overflow-hidden">
             {filteredCommands.map(({ command, label, description, icon: Icon }, index) => (
               <button
                 key={command}
                 onClick={() => handleSelectCommand(command)}
                 className={`w-full flex items-center gap-2.5 px-3 py-2 text-left transition-colors group ${
-                  index === selectedIndex ? 'bg-white/10' : 'hover:bg-white/5'
+                  index === selectedIndex ? 'bg-accent' : 'hover:bg-accent'
                 }`}
               >
                 <Icon className={`w-3.5 h-3.5 transition-colors ${
-                  index === selectedIndex ? 'text-violet-400' : 'text-white/30 group-hover:text-violet-400'
+                  index === selectedIndex ? 'text-primary' : 'text-muted-foreground group-hover:text-primary'
                 }`} />
-                <span className="text-xs font-mono text-violet-400/80">{command}</span>
-                <span className="text-xs text-white/50">{label}</span>
-                <span className="text-[10px] text-white/25 ml-auto">{description}</span>
+                <span className="text-xs font-mono text-primary/80">{command}</span>
+                <span className="text-xs text-muted-foreground">{label}</span>
+                <span className="text-[10px] text-muted-foreground ml-auto">{description}</span>
               </button>
             ))}
           </div>
@@ -255,19 +255,19 @@ export const QuickActionWidget: React.FC<QuickActionWidgetProps> = ({
         <div className="px-3 pb-2">
           <div
             ref={resultRef}
-            className="bg-black/30 rounded-lg p-3 border border-white/5 max-h-[240px] overflow-y-auto custom-scrollbar"
+            className="bg-accent rounded-lg p-3 border border-border max-h-[240px] overflow-y-auto custom-scrollbar"
           >
             {error ? (
-              <p className="text-xs text-red-400">{error}</p>
+              <p className="text-xs text-destructive">{error}</p>
             ) : imageUrl ? (
               <div className="space-y-2">
-                <img src={imageUrl} alt="AI Generated" className="w-full rounded-lg border border-white/10" />
-                <p className="text-[10px] text-white/30 font-mono break-all">{result}</p>
+                <img src={imageUrl} alt="AI Generated" className="w-full rounded-lg border border-border" />
+                <p className="text-[10px] text-muted-foreground font-mono break-all">{result}</p>
               </div>
             ) : (
-              <pre className="text-xs text-white/80 whitespace-pre-wrap break-words font-mono leading-relaxed">
+              <pre className="text-xs text-foreground whitespace-pre-wrap break-words font-mono leading-relaxed">
                 {result}
-                {loading && <span className="inline-block w-1.5 h-3.5 bg-violet-400 animate-pulse ml-0.5 align-middle" />}
+                {loading && <span className="inline-block w-1.5 h-3.5 bg-primary animate-pulse ml-0.5 align-middle" />}
               </pre>
             )}
           </div>
@@ -279,7 +279,7 @@ export const QuickActionWidget: React.FC<QuickActionWidgetProps> = ({
         <div className="flex justify-end gap-2 px-3 pb-3">
           <button
             onClick={() => { abortRef.current?.abort(); onReject(); }}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-white/50 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground bg-white/5 hover:bg-accent rounded-lg transition-colors"
           >
             <X className="w-3 h-3" /> Reject
           </button>
@@ -288,13 +288,13 @@ export const QuickActionWidget: React.FC<QuickActionWidgetProps> = ({
               <button
                 onClick={handleRegenerate}
                 disabled={loading}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-white/70 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg transition-colors disabled:opacity-50"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground bg-white/5 hover:bg-accent rounded-lg transition-colors disabled:opacity-50"
               >
                 <RotateCcw className="w-3 h-3" /> Regenerate
               </button>
               <button
                 onClick={() => onAccept(result)}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-white bg-violet-500 hover:bg-violet-400 rounded-lg transition-colors font-medium"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-white bg-violet-500 hover:bg-primary rounded-lg transition-colors font-medium"
               >
                 <Check className="w-3 h-3" /> Accept
               </button>

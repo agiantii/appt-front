@@ -3,6 +3,7 @@ import { User, Camera, CheckCircle, AlertCircle } from 'lucide-react';
 import { userApi } from '../../../api/user';
 import { uploadApi } from '../../../api/upload';
 import { User as UserType } from '../../../types';
+import { useTheme } from '../../../contexts/ThemeContext';
 
 // Toast 通知组件
 interface Toast {
@@ -24,7 +25,7 @@ const ToastContainer: React.FC<{ toasts: Toast[]; onRemove: (id: number) => void
         <div
           key={toast.id}
           className={`flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg animate-in fade-in slide-in-from-right duration-200 ${
-            toast.type === 'success' ? 'bg-green-500/90 text-white' : 'bg-red-500/90 text-white'
+            toast.type === 'success' ? 'bg-success/90 text-white' : 'bg-destructive/90 text-white'
           }`}
         >
           {toast.type === 'success' ? <CheckCircle className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
@@ -36,6 +37,8 @@ const ToastContainer: React.FC<{ toasts: Toast[]; onRemove: (id: number) => void
 };
 
 const ProfileSettings: React.FC = () => {
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
   const [user, setUser] = useState<UserType | null>(null);
   const [formData, setFormData] = useState({
     username: '',
@@ -130,14 +133,16 @@ const ProfileSettings: React.FC = () => {
     <div className="space-y-8 animate-in fade-in duration-500">
       <div>
         <h1 className="text-3xl font-bold tracking-tight mb-2">Profile Info</h1>
-        <p className="text-white/40">Manage your account details and public appearance.</p>
+        <p className={isDark ? 'text-white/40' : 'text-gray-500'}>Manage your account details and public appearance.</p>
       </div>
 
       <ToastContainer toasts={toasts} onRemove={removeToast} />
 
       {user && (
         <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="flex items-center gap-6 p-6 bg-white/5 border border-white/10 rounded-3xl">
+          <div className={`flex items-center gap-6 p-6 border rounded-3xl ${
+            isDark ? 'bg-white/5 border-white/10' : 'bg-gray-50 border-gray-200'
+          }`}>
             <div className="relative">
               <img 
                 src={formData.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.username}`} 
@@ -166,33 +171,47 @@ const ProfileSettings: React.FC = () => {
             </div>
             <div>
               <h3 className="text-xl font-bold">{user.username}</h3>
-              <p className="text-white/40 text-sm">{user.email}</p>
+              <p className={isDark ? 'text-white/40 text-sm' : 'text-gray-500 text-sm'}>{user.email}</p>
             </div>
           </div>
 
-          <div className="p-8 bg-[#0c0c0e] border border-white/10 rounded-3xl space-y-6">
+          <div className={`p-8 border rounded-3xl space-y-6 ${
+            isDark ? 'bg-[#0c0c0e] border-white/10' : 'bg-white border-gray-200'
+          }`}>
             <div className="space-y-2">
-              <label className="text-[10px] font-black text-white/30 uppercase tracking-widest">
+              <label className={`text-[10px] font-black uppercase tracking-widest ${
+                isDark ? 'text-white/30' : 'text-gray-400'
+              }`}>
                 Username
               </label>
               <input
                 type="text"
                 value={formData.username}
                 onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-white/10 transition-all"
+                className={`w-full border rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 transition-all ${
+                  isDark
+                    ? 'bg-white/5 border-white/10 focus:ring-white/10'
+                    : 'bg-gray-50 border-gray-200 focus:ring-gray-200'
+                }`}
                 placeholder="Enter your username"
               />
             </div>
 
             <div className="space-y-2">
-              <label className="text-[10px] font-black text-white/30 uppercase tracking-widest">
+              <label className={`text-[10px] font-black uppercase tracking-widest ${
+                isDark ? 'text-white/30' : 'text-gray-400'
+              }`}>
                 Email
               </label>
               <input
                 type="email"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-white/10 transition-all"
+                className={`w-full border rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 transition-all ${
+                  isDark
+                    ? 'bg-white/5 border-white/10 focus:ring-white/10'
+                    : 'bg-gray-50 border-gray-200 focus:ring-gray-200'
+                }`}
                 placeholder="Enter your email"
               />
             </div>

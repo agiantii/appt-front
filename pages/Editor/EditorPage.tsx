@@ -27,6 +27,7 @@ import { SidebarTab, Slide, SlideSpace, Snippet, User, ConnectionInfo } from '..
 import { PERMISSIONS, SlideRole } from '../../constant/permissions';
 import ResizableLayout from '../../components/Editor/ResizablePanels';
 import { streamInlineEdit, suggestAltText } from '../../api/ai';
+import { useTheme } from '../../contexts/ThemeContext';
 
 // Custom Hooks & Components
 import { useSlideParser } from './useSlideParser';
@@ -74,38 +75,72 @@ import { history, historyKeymap, defaultKeymap, indentWithTab } from '@codemirro
 import { searchKeymap, highlightSelectionMatches } from '@codemirror/search';
 import { autocompletion, completionKeymap, closeBrackets, closeBracketsKeymap, CompletionContext } from '@codemirror/autocomplete';
 
+// 暗色模式主题
 const slidevDarkTheme = EditorView.theme({
-  "&": { 
-    color: "#e4e4e7", 
-    backgroundColor: "transparent", 
+  "&": {
+    color: "hsl(var(--foreground))",
+    backgroundColor: "transparent",
     fontSize: "14px",
-    height: "100%" 
+    height: "100%"
   },
   "& .cm-scroller": {
     overflow: "auto",
     outline: "none"
   },
-  ".cm-content": { 
-    caretColor: "#ffffff", 
-    paddingTop: "24px", 
+  ".cm-content": {
+    caretColor: "hsl(var(--foreground))",
+    paddingTop: "24px",
     paddingBottom: "24px",
     minHeight: "100%"
   },
-  "&.cm-focused .cm-cursor": { borderLeftColor: "#ffffff" },
+  "&.cm-focused .cm-cursor": { borderLeftColor: "hsl(var(--foreground))" },
   "&.cm-focused .cm-selectionBackground, .cm-selectionBackground, ::selection": { backgroundColor: "rgba(99, 102, 241, 0.35) !important" },
-  ".cm-gutters": { 
-    backgroundColor: "#09090b", 
-    color: "#3f3f46", 
-    borderRight: "1px solid rgba(255,255,255,0.05)", 
-    paddingLeft: "10px", 
-    paddingRight: "10px" 
+  ".cm-gutters": {
+    backgroundColor: "hsl(var(--background))",
+    color: "hsl(var(--muted-foreground))",
+    borderRight: "1px solid hsl(var(--border))",
+    paddingLeft: "10px",
+    paddingRight: "10px"
   },
-  ".cm-activeLine": { backgroundColor: "rgba(255,255,255,0.02)" },
-  ".cm-activeLineGutter": { backgroundColor: "rgba(255,255,255,0.05)", color: "#a1a1aa" },
-  ".cm-foldPlaceholder": { backgroundColor: "transparent", border: "none", color: "#71717a" }
-}, { dark: true });
+  ".cm-activeLine": { backgroundColor: "hsl(var(--accent))" },
+  ".cm-activeLineGutter": { backgroundColor: "hsl(var(--accent))", color: "hsl(var(--muted-foreground))" },
+  ".cm-foldPlaceholder": { backgroundColor: "transparent", border: "none", color: "hsl(var(--muted-foreground))" }
+});
 
-const slidevHighlightStyle = HighlightStyle.define([
+// 亮色模式主题
+const slidevLightTheme = EditorView.theme({
+  "&": {
+    color: "hsl(var(--foreground))",
+    backgroundColor: "transparent",
+    fontSize: "14px",
+    height: "100%"
+  },
+  "& .cm-scroller": {
+    overflow: "auto",
+    outline: "none"
+  },
+  ".cm-content": {
+    caretColor: "hsl(var(--foreground))",
+    paddingTop: "24px",
+    paddingBottom: "24px",
+    minHeight: "100%"
+  },
+  "&.cm-focused .cm-cursor": { borderLeftColor: "hsl(var(--foreground))" },
+  "&.cm-focused .cm-selectionBackground, .cm-selectionBackground, ::selection": { backgroundColor: "rgba(99, 102, 241, 0.35) !important" },
+  ".cm-gutters": {
+    backgroundColor: "hsl(var(--background))",
+    color: "hsl(var(--muted-foreground))",
+    borderRight: "1px solid hsl(var(--border))",
+    paddingLeft: "10px",
+    paddingRight: "10px"
+  },
+  ".cm-activeLine": { backgroundColor: "hsl(var(--accent))" },
+  ".cm-activeLineGutter": { backgroundColor: "hsl(var(--accent))", color: "hsl(var(--muted-foreground))" },
+  ".cm-foldPlaceholder": { backgroundColor: "transparent", border: "none", color: "hsl(var(--muted-foreground))" }
+});
+
+// 暗色模式语法高亮
+const slidevDarkHighlightStyle = HighlightStyle.define([
   { tag: t.heading1, fontSize: "1.4em", fontWeight: "bold", color: "#fafafa" },
   { tag: t.heading2, fontSize: "1.2em", fontWeight: "bold", color: "#f4f4f5" },
   { tag: t.heading3, fontSize: "1.1em", fontWeight: "bold", color: "#e4e4e7" },
@@ -119,6 +154,23 @@ const slidevHighlightStyle = HighlightStyle.define([
   { tag: t.emphasis, fontStyle: "italic" },
   { tag: t.link, color: "#93c5fd" },
   { tag: t.list, color: "#fcd34d" },
+]);
+
+// 亮色模式语法高亮
+const slidevLightHighlightStyle = HighlightStyle.define([
+  { tag: t.heading1, fontSize: "1.4em", fontWeight: "bold", color: "#18181b" },
+  { tag: t.heading2, fontSize: "1.2em", fontWeight: "bold", color: "#27272a" },
+  { tag: t.heading3, fontSize: "1.1em", fontWeight: "bold", color: "#3f3f46" },
+  { tag: t.keyword, color: "#2563eb" },
+  { tag: t.operator, color: "#52525b" },
+  { tag: t.string, color: "#16a34a" },
+  { tag: t.comment, color: "#a1a1aa", fontStyle: "italic" },
+  { tag: t.meta, color: "#9333ea" },
+  { tag: t.url, color: "#2563eb", textDecoration: "underline" },
+  { tag: t.strong, fontWeight: "bold" },
+  { tag: t.emphasis, fontStyle: "italic" },
+  { tag: t.link, color: "#2563eb" },
+  { tag: t.list, color: "#ca8a04" },
 ]);
 
 // Toast 通知组件
@@ -141,7 +193,7 @@ const ToastContainer: React.FC<{ toasts: Toast[]; onRemove: (id: number) => void
         <div
           key={toast.id}
           className={`flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg animate-in fade-in slide-in-from-right duration-200 ${
-            toast.type === 'success' ? 'bg-green-500/90 text-white' : 'bg-red-500/90 text-white'
+            toast.type === 'success' ? 'bg-success/90 text-success-foreground' : 'bg-destructive/90 text-destructive-foreground'
           }`}
         >
           {toast.type === 'success' ? <CheckCircle className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
@@ -153,6 +205,7 @@ const ToastContainer: React.FC<{ toasts: Toast[]; onRemove: (id: number) => void
 };
 
 const EditorPage: React.FC = () => {
+  const { theme } = useTheme();
   const { slideSpaceId, slideId } = useParams();
   const navigate = useNavigate();
   const editorContainerRef = useRef<HTMLDivElement>(null);
@@ -563,6 +616,10 @@ const EditorPage: React.FC = () => {
     // Check if user has edit permission
     const canEdit = userRole ? PERMISSIONS[userRole]?.includes('edit') : false;
 
+    // 根据主题选择对应的编辑器主题
+    const editorTheme = theme === 'dark' ? slidevDarkTheme : slidevLightTheme;
+    const editorHighlightStyle = theme === 'dark' ? slidevDarkHighlightStyle : slidevLightHighlightStyle;
+
     const extensions: any[] = [
       EditorView.editable.of(canEdit),
       ...manualBasicSetup,
@@ -573,8 +630,8 @@ const EditorPage: React.FC = () => {
       Prec.high(EditorState.languageData.of(() => [{
         autocomplete: snippetCompletionSource
       }])),
-      slidevDarkTheme,
-      syntaxHighlighting(slidevHighlightStyle),
+      editorTheme,
+      syntaxHighlighting(editorHighlightStyle),
       EditorView.updateListener.of((update) => {
         if (update.docChanged && update.view) {
           try {
@@ -612,7 +669,7 @@ const EditorPage: React.FC = () => {
       container.removeEventListener('paste', handlePasteImage);
       view.destroy();
     };
-  }, [slideId, manualBasicSetup, snippetCompletionSource, isAuthenticated, userRole, currentSlide?.content, handlePasteImage]);
+  }, [slideId, manualBasicSetup, snippetCompletionSource, isAuthenticated, userRole, currentSlide?.content, handlePasteImage, theme]);
 
   const handleSave = useCallback(async () => {
     if (!slideId) return;
@@ -715,25 +772,25 @@ const EditorPage: React.FC = () => {
   };
 
   const editorCenter = (
-    <div className="flex-1 flex flex-col min-w-0 bg-[#0c0c0e] overflow-hidden">
-      <div className="h-10 border-b border-white/5 flex items-center px-4 bg-[#09090b] overflow-x-auto whitespace-nowrap hide-scrollbar flex-shrink-0">
+    <div className="flex-1 flex flex-col min-w-0 bg-card overflow-hidden">
+      <div className="h-10 border-b border-border flex items-center px-4 bg-background overflow-x-auto whitespace-nowrap hide-scrollbar flex-shrink-0">
         <div 
-          className="flex items-center gap-2 bg-[#18181b] px-4 py-2 rounded-t-xl border-t border-x border-white/10 -mb-[1px] cursor-pointer hover:bg-[#1c1c1f] transition-colors"
+          className="flex items-center gap-2 bg-accent px-4 py-2 rounded-t-xl border-t border-x border-border -mb-[1px] cursor-pointer hover:bg-card transition-colors"
           onClick={() => setIsTitleEditing(true)}
         >
-          <Files className="w-3.5 h-3.5 text-white/40" />
-          <span className="text-xs font-semibold text-white/90">{currentSlide?.title}</span>
+          <Files className="w-3.5 h-3.5 text-muted-foreground" />
+          <span className="text-xs font-semibold text-foreground">{currentSlide?.title}</span>
         </div>
       </div>
       <div className="flex-1 relative overflow-hidden flex flex-col">
         {/* Container must be 100% height to allow CodeMirror virtual scrolling */}
         <div ref={editorContainerRef} className="absolute inset-0" />
       </div>
-      <div className="h-10 border-t border-white/5 flex items-center justify-between px-4 bg-[#09090b] text-[10px] font-bold text-white/30 uppercase tracking-widest flex-shrink-0">
+      <div className="h-10 border-t border-border flex items-center justify-between px-4 bg-background text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex-shrink-0">
         <div className="flex items-center gap-6">
-           {/* <div className="flex items-center gap-2 hover:text-white transition-colors cursor-pointer"><ImageIcon className="w-3.5 h-3.5" /> Media</div>
-           <div className="flex items-center gap-2 hover:text-white transition-colors cursor-pointer"><Layout className="w-3.5 h-3.5" /> Layouts</div>
-           <div className="flex items-center gap-2 hover:text-white transition-colors cursor-pointer"><SettingsIcon className="w-3.5 h-3.5" /> Config</div> */}
+           {/* <div className="flex items-center gap-2 hover:text-foreground transition-colors cursor-pointer"><ImageIcon className="w-3.5 h-3.5" /> Media</div>
+           <div className="flex items-center gap-2 hover:text-foreground transition-colors cursor-pointer"><Layout className="w-3.5 h-3.5" /> Layouts</div>
+           <div className="flex items-center gap-2 hover:text-foreground transition-colors cursor-pointer"><SettingsIcon className="w-3.5 h-3.5" /> Config</div> */}
         </div>
         <div>Ln {content?.split('\n').length || 0}, Col {content?.length || 0}</div>
       </div>
@@ -745,14 +802,14 @@ const EditorPage: React.FC = () => {
       {/* Permission Denied Modal */}
       {permissionDeniedModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm">
-          <div className="relative w-[400px] bg-[#1c1c1f] border border-red-500/30 rounded-2xl shadow-2xl p-6">
+          <div className="relative w-[400px] bg-card border border-destructive/30 rounded-2xl shadow-2xl p-6">
             <div className="flex flex-col items-center text-center">
-              <div className="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center mb-4">
-                <AlertTriangle className="w-8 h-8 text-red-400" />
+              <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center mb-4">
+                <AlertTriangle className="w-8 h-8 text-destructive" />
               </div>
-              <h3 className="text-lg font-semibold text-white mb-2">访问被拒绝</h3>
-              <p className="text-sm text-white/60 mb-4">您没有权限访问此幻灯片</p>
-              <div className="text-xs text-white/40">
+              <h3 className="text-lg font-semibold text-foreground mb-2">访问被拒绝</h3>
+              <p className="text-sm text-muted-foreground mb-4">您没有权限访问此幻灯片</p>
+              <div className="text-xs text-muted-foreground">
                 {permissionCountdown} 秒后返回主页...
               </div>
             </div>
@@ -760,7 +817,7 @@ const EditorPage: React.FC = () => {
         </div>
       )}
       
-      <div className="flex h-screen w-screen bg-[#09090b] text-white overflow-hidden select-none font-sans">
+      <div className="flex h-screen w-screen bg-background text-foreground overflow-hidden select-none font-sans">
         <EditorSidebar 
           activeTab={activeTab}
           setActiveTab={setActiveTab}

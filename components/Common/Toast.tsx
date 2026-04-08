@@ -25,8 +25,15 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [toasts, setToasts] = useState<Toast[]>([]);
 
   const addToast = useCallback((message: string, type: 'success' | 'error') => {
-    const id = Date.now();
-    setToasts(prev => [...prev, { id, message, type }]);
+    // 检查是否已有相同消息的 toast,避免重复显示
+    setToasts(prev => {
+      const isDuplicate = prev.some(t => t.message === message && t.type === type);
+      if (isDuplicate) {
+        return prev; // 如果已存在相同消息,不添加
+      }
+      const id = Date.now();
+      return [...prev, { id, message, type }];
+    });
   }, []);
 
   const removeToast = useCallback((id: number) => {
@@ -54,7 +61,7 @@ const ToastContainer: React.FC<{ toasts: Toast[]; onRemove: (id: number) => void
         <div
           key={toast.id}
           className={`flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg animate-in fade-in slide-in-from-right duration-200 ${
-            toast.type === 'success' ? 'bg-green-500/90 text-white' : 'bg-red-500/90 text-white'
+            toast.type === 'success' ? 'bg-success/90 text-white' : 'bg-destructive/90 text-white'
           }`}
         >
           {toast.type === 'success' ? <CheckCircle className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}

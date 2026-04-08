@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { spaceApi } from '../../api/space';
 import { SlideSpace } from '../../types';
+import ThemeToggle from '../Common/ThemeToggle';
 
 // Toast 通知组件
 interface Toast {
@@ -37,7 +38,7 @@ const ToastContainer: React.FC<{ toasts: Toast[]; onRemove: (id: number) => void
         <div
           key={toast.id}
           className={`flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg animate-in fade-in slide-in-from-right duration-200 ${
-            toast.type === 'success' ? 'bg-green-500/90 text-white' : 'bg-red-500/90 text-white'
+            toast.type === 'success' ? 'bg-green-600/90 text-white' : 'bg-destructive/90 text-white'
           }`}
         >
           {toast.type === 'success' ? <CheckCircle className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
@@ -74,38 +75,38 @@ const CreateSpaceModal: React.FC<CreateSpaceModalProps> = ({ isOpen, onClose, on
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-[400px] bg-[#1c1c1f] border border-white/10 rounded-2xl shadow-2xl animate-in fade-in zoom-in-95 duration-200">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-white/5">
-          <h3 className="text-sm font-semibold text-white/90">Create New Space</h3>
-          <button onClick={onClose} className="p-1.5 hover:bg-white/10 rounded-lg text-white/40 hover:text-white transition-colors">
+      <div className="relative w-[400px] bg-secondary border border-border rounded-2xl shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+          <h3 className="text-sm font-semibold text-foreground">Create New Space</h3>
+          <button onClick={onClose} className="p-1.5 hover:bg-accent/50 rounded-lg text-muted-foreground hover:text-foreground transition-colors">
             <X className="w-4 h-4" />
           </button>
         </div>
         <div className="px-5 py-5">
           <div className="space-y-2">
-            <label className="text-xs font-medium text-white/50 uppercase tracking-wider">Space Name</label>
+            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Space Name</label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
               placeholder="Enter space name..."
-              className="w-full bg-[#0c0c0e] border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white/90 placeholder:text-white/30 focus:outline-none focus:border-white/30 focus:ring-1 focus:ring-white/10"
+              className="w-full bg-background border border-border rounded-lg px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-ring focus:ring-1 focus:ring-ring"
               autoFocus
             />
           </div>
         </div>
-        <div className="flex items-center justify-end gap-3 px-5 py-4 border-t border-white/5">
+        <div className="flex items-center justify-end gap-3 px-5 py-4 border-t border-border">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-xs font-medium text-white/60 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
+            className="px-4 py-2 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent/50 rounded-lg transition-colors"
           >
             Cancel
           </button>
           <button
             onClick={handleCreate}
             disabled={!name.trim()}
-            className="px-4 py-2 text-xs font-medium bg-white text-black hover:bg-white/90 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="px-4 py-2 text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             Create Space
           </button>
@@ -170,14 +171,14 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ onLogout, onAuthClick
   ];
 
   return (
-    <div className="flex h-full w-full bg-[#09090b]">
+    <div className="flex h-full w-full bg-background">
       {/* Sidebar */}
-      <aside className="w-64 border-r border-white/5 flex flex-col bg-[#0c0c0e]">
+      <aside className="w-64 border-r border-border flex flex-col bg-secondary/50">
         <div className="p-6 flex items-center gap-2">
-          <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
-            <Zap className="w-5 h-5 text-black fill-black" />
+          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+            <Zap className="w-5 h-5 text-primary-foreground fill-primary-foreground" />
           </div>
-          <span className="font-bold text-lg tracking-tight">Slidev.ai</span>
+          <span className="font-bold text-lg tracking-tight text-foreground">Slidev.ai</span>
         </div>
 
         <nav className="flex-1 px-4 space-y-1">
@@ -188,8 +189,8 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ onLogout, onAuthClick
                 to={item.path}
                 className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                   location.pathname === item.path 
-                    ? 'bg-white/10 text-white' 
-                    : 'text-white/50 hover:text-white hover:bg-white/5'
+                    ? 'bg-accent text-accent-foreground' 
+                    : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
                 }`}
               >
                 <item.icon className="w-4 h-4" />
@@ -201,12 +202,12 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ onLogout, onAuthClick
           {isAuthenticated && (
             <div className="pt-6">
               <div className="px-3 mb-2 flex items-center justify-between">
-                <span className="text-xs font-semibold text-white/30 uppercase tracking-wider">My Spaces</span>
+                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">My Spaces</span>
                 <button 
                   onClick={() => setIsCreateModalOpen(true)}
-                  className="p-1 hover:bg-white/5 rounded transition-colors"
+                  className="p-1 hover:bg-accent/50 rounded transition-colors"
                 >
-                  <Plus className="w-4 h-4 text-white/40" />
+                  <Plus className="w-4 h-4 text-muted-foreground" />
                 </button>
               </div>
               <div className="space-y-1">
@@ -214,7 +215,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ onLogout, onAuthClick
                   <Link
                     key={`sidebar-space-${space.id}`}
                     to={`/slide/${space.id}`}
-                    className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-white/50 hover:text-white hover:bg-white/5 transition-colors"
+                    className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors"
                   >
                     <FolderSearch className="w-4 h-4" />
                     <span className="truncate">{space.name}</span>
@@ -235,16 +236,16 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ onLogout, onAuthClick
         {/* Toast Notifications */}
         <ToastContainer toasts={toasts} onRemove={removeToast} />
 
-        <div className="p-4 border-t border-white/5">
+        <div className="p-4 border-t border-border">
           {isAuthenticated ? (
             <div className="flex flex-col gap-1">
-              <Link to="/settings/info" className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-white/50 hover:text-white hover:bg-white/5 transition-colors">
+              <Link to="/settings/info" className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors">
                 <UserIcon className="w-4 h-4" />
                 Profile
               </Link>
               <button 
                 onClick={onLogout}
-                className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-red-400/70 hover:text-red-400 hover:bg-red-400/5 transition-colors"
+                className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-destructive hover:bg-destructive/10 transition-colors"
               >
                 <LogOut className="w-4 h-4" />
                 Logout
@@ -253,7 +254,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ onLogout, onAuthClick
           ) : (
             <button 
               onClick={onAuthClick}
-              className="w-full flex items-center justify-center gap-2 bg-white text-black py-2 rounded-lg text-sm font-semibold hover:bg-white/90 transition-colors"
+              className="w-full flex items-center justify-center gap-2 bg-primary text-primary-foreground py-2 rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors"
             >
               Sign In
             </button>
@@ -262,7 +263,10 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ onLogout, onAuthClick
       </aside>
 
       {/* Main Content Area */}
-      <main className="flex-1 overflow-y-auto bg-[#09090b]">
+      <main className="flex-1 overflow-y-auto bg-background">
+        <div className="fixed top-4 right-4 z-50">
+          <ThemeToggle />
+        </div>
         <Outlet />
       </main>
     </div>
