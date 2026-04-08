@@ -2,7 +2,7 @@
 
 # APPT - AI 驱动的幻灯片协作编辑平台
 
-基于 React + TypeScript 构建的现代化幻灯片编辑器，支持实时协作、AI 辅助创作和版本管理。
+基于 React + NestJS 构建的现代化幻灯片编辑器，支持实时协作、AI 辅助创作和版本管理。
 
 ## ✨ 核心功能
 
@@ -52,6 +52,7 @@
 - **在线状态显示**：实时展示协作者列表
 <video controls src="assets/v1.mp4" title="Title"></video>
 ![alt text](v1.gif)
+
 ### 🔐 权限与安全管理
 - **角色权限控制**：Owner / Editor / Commenter / Viewer
 - **JWT 认证**：安全的用户身份验证
@@ -68,6 +69,56 @@ export const PERMISSIONS: Record<SlideRole, string[]> = {
 };
 ```
 
+####  协作架构图
+
+```mermaid
+graph TD
+    subgraph Browser ["客户端浏览器"]
+        ReactApp["React 应用 (Vite)"]
+        CodeMirror["CodeMirror 6 编辑器"]
+        YjsClient["Yjs Client (CRDT)"]
+        Preview["Slidev 实时预览"]
+    end
+
+    subgraph BackendServer ["后端服务 (NestJS)"]
+        subgraph WebSocketLayer ["WebSocket 协作层"]
+            Hocuspocus["Hocuspocus WebSocket 服务"]
+        end
+        
+        subgraph BusinessLayer ["业务逻辑层"]
+            NestJS_API["REST API 控制器"]
+            Auth["认证模块 (JWT)"]
+            SlideLogic["幻灯片与版本逻辑"]
+            SharedDocService["SharedDoc 服务"]
+        end
+        
+        subgraph DataStore ["数据存储"]
+            MySQL[("MySQL 数据库")]
+        end
+    end
+
+    %% 前端内部连接
+    CodeMirror <-->|"内容绑定"| YjsClient
+    YjsClient <-->|"状态驱动"| ReactApp
+    ReactApp <-->|"渲染"| Preview
+    
+    %% 前后端 WebSocket 连接
+    YjsClient <-->|"WebSocket 连接<br/>文档同步"| Hocuspocus
+    
+    %% 后端内部连接
+    Hocuspocus <-->|"onAuthenticate: JWT验证<br/>onLoadDocument: 加载文档<br/>onStoreDocument: 保存内容"| SharedDocService
+    SharedDocService <-->|"查询/保存幻灯片内容"| SlideLogic
+    SharedDocService <-->|"验证用户权限"| Auth
+    
+    %% REST API 连接
+    ReactApp <-->|"REST API<br/>CRUD 操作"| NestJS_API
+    NestJS_API <-->|"业务逻辑处理"| SlideLogic
+    NestJS_API <-->|"用户认证授权"| Auth
+    
+    %% 数据存储连接
+    SlideLogic <-->|"持久化存储<br/>版本管理"| MySQL
+```
+
 ### 📚 版本控制
 - **版本历史**：自动保存每次修改记录
 - **版本对比**：查看不同版本间的差异
@@ -81,6 +132,9 @@ export const PERMISSIONS: Record<SlideRole, string[]> = {
 - **React 19.2.4**：最新 React 版本
 - **TypeScript 5.8**：类型安全的开发体验
 - **Vite 6.2**：极速开发和构建工具
+### 后端框架
+
+- **NestJS 10.2.4**：最新 NestJS 版本
 
 ### 核心库
 - **React Router v7**：客户端路由管理
@@ -92,6 +146,97 @@ export const PERMISSIONS: Record<SlideRole, string[]> = {
 - **Lucide React**：现代图标库
 - **Axios**：HTTP 请求封装
 - **diff**：版本差异对比
+
+## 🖥️ 后端架构 (appt-backend)
+
+### 后端技术栈
+- **NestJS 11.0.1**：渐进式 Node.js 框架
+- **TypeScript 5.7.3**：类型安全的服务器端开发
+- **TypeORM 0.3.28**：ORM 数据库操作
+- **MySQL 8.0+**：关系型数据库
+- **JWT 认证**：基于 Passport 的认证系统
+- **Swagger UI**：API 文档自动生成
+- **WebSocket 协作**：基于 Hocuspocus + Yjs 的实时协作服务
+
+### 核心依赖
+- **@hocuspocus/server**：WebSocket 协作服务器
+- **@nestjs/typeorm**：TypeORM 集成
+- **@nestjs/jwt**：JWT 认证模块
+- **bcrypt**：密码哈希
+- **ali-oss**：阿里云 OSS 存储
+- **openai**：OpenAI API 集成
+
+### 模块架构
+```
+appt-backend/
+├── src/
+│   ├── ai-assist/              # AI 辅助功能模块
+│   ├── auth/                   # 认证授权模块
+│   ├── collaborators/          # 协作者管理模块
+│   ├── comments/               # 评论系统模块
+│   ├── common/                 # 公共工具和守卫
+│   │   ├── captcha/            # 验证码服务
+│   │   ├── guards/             # 权限守卫
+│   │   └── interceptors/       # 拦截器
+│   ├── likes/                  # 点赞功能模块
+│   ├── registration-codes/     # 注册码管理模块
+│   ├── shared-doc/             # 文档协作共享模块
+│   ├── slide-spaces/           # 幻灯片空间管理
+│   ├── slides/                 # 幻灯片 CRUD 操作
+│   ├── snippets/               # 代码片段管理
+│   ├── themes/                 # Slidev 主题管理
+│   ├── plugins/                # Slidev 插件管理
+│   ├── upload/                 # 文件上传模块
+│   ├── users/                  # 用户管理模块
+│   ├── versions/               # 版本控制模块
+│   ├── assets/                 # 静态资源管理
+│   └── app.module.ts           # 主模块配置
+```
+
+### 数据库设计
+后端使用 MySQL 数据库，通过 TypeORM 进行数据持久化。主要实体包括：
+- **User**：用户账户、角色和认证信息
+- **SlideSpace**：幻灯片空间/知识库
+- **Slide**：幻灯片文档内容
+- **SlideVersion**：幻灯片版本历史
+- **SlideUserRole**：用户-幻灯片权限关联
+- **SlideComment**：幻灯片评论和讨论
+- **Snippet**：可复用代码片段
+- **RegistrationCode**：用户注册码管理
+
+### API 设计
+采用 RESTful API 设计原则，主要接口分组：
+- **认证接口** (`/api/auth/*`)：登录、注册、令牌刷新
+- **用户管理** (`/api/users/*`)：用户信息、密码重置
+- **空间管理** (`/api/slide-spaces/*`)：知识库 CRUD、成员管理
+- **幻灯片操作** (`/api/slides/*`)：幻灯片内容、权限、协作
+- **版本控制** (`/api/versions/*`)：版本历史、回滚、对比
+- **评论系统** (`/api/comments/*`)：评论 CRUD、树形结构
+- **AI 辅助** (`/api/ai/*`)：内容生成、图像生成、智能建议
+- **文件上传** (`/api/upload/*`)：图片、资源上传到 OSS
+
+### 安全与权限
+- **JWT 认证**：所有 API 请求需要有效的 JWT 令牌
+- **角色权限系统**：Owner/Editor/Commenter/Viewer 四级权限
+- **全局守卫**：JwtAuthGuard 和 SlideRoleGuard 保护路由
+- **数据验证**：使用 class-validator 进行请求参数验证
+- **密码加密**：bcrypt 存储哈希密码
+
+### 实时协作架构
+```
+前端 (React + Yjs) ←WebSocket→ Hocuspocus 服务器 ←REST API→ NestJS 业务层
+      ↓                              ↓                          ↓
+  编辑器状态                   文档状态同步                数据持久化存储
+```
+- **Hocuspocus 服务器**：处理 Yjs 文档的 WebSocket 连接和状态同步
+- **NestJS 协作模块**：处理协作相关的业务逻辑和权限验证
+- **自动保存**：协作内容定期同步到数据库
+
+### 部署配置
+- **环境变量**：通过 `.env` 文件配置数据库、JWT 密钥、OSS 等
+- **生产构建**：`pnpm run build` 生成 `dist/` 目录
+- **进程管理**：推荐使用 PM2 或 Docker 容器化部署
+- **反向代理**：Nginx 配置 WebSocket 升级和静态资源服务
 
 ## 📦 项目结构
 
@@ -317,7 +462,7 @@ erDiagram
 
 - **Node.js**: >= 18.x
 - **包管理器**: npm / pnpm / yarn
-- **Gemini API Key**: （可选）用于 AI 功能
+- **ALIYUN API Key**: （可选）用于 AI 功能
 
 ### 安装步骤
 
@@ -338,8 +483,9 @@ erDiagram
    
    创建 `.env.local` 文件并配置：
    ```env
-   GEMINI_API_KEY=your_gemini_api_key_here
-   VITE_API_BASE_URL=http://localhost:3000
+   DASHSCOPE_API_KEY=xxx
+   QWEN_MODEL=qwen-plus
+   QWEN_IMAGE_MODEL=    qwen-image-plus
    ```
 
 4. **启动开发服务器**
@@ -419,78 +565,7 @@ VITE_API_BASE_URL=http://localhost:3000
 | `userApi` | 用户认证、信息获取 |
 | `aiApi` | AI 内容生成、智能建议 |
 
-## 🧪 开发指南
 
-### 代码规范
-
-- 使用 TypeScript 严格模式
-- 遵循 ESLint 配置
-- 组件采用函数式编程风格
-- 使用 Hook 管理状态和副作用
-
-### 添加新页面
-
-1. 在 `pages/` 目录下创建新页面组件
-2. 在 `App.tsx` 中添加路由配置
-3. 在导航组件中添加链接
-
-### 组件开发最佳实践
-
-```typescript
-// 使用 TypeScript 定义 Props 接口
-interface MyComponentProps {
-  title: string;
-  onClick?: () => void;
-}
-
-// 使用 React.FC 定义组件
-const MyComponent: React.FC<MyComponentProps> = ({ title, onClick }) => {
-  return <div onClick={onClick}>{title}</div>;
-};
-```
-
-### 状态管理
-
-- 局部状态：使用 `useState`、`useReducer`
-- 跨组件通信：使用 Props 传递
-- 全局状态：考虑使用 Context API
-
-### 调试技巧
-
-- 使用 React Developer Tools
-- 开启 Source Map 调试
-- 利用浏览器 Network 面板查看 API 请求
-
-## ❓ 常见问题
-
-### 环境配置问题
-
-**Q: 找不到 Node 模块？**
-```bash
-# 清理缓存重新安装
-rm -rf node_modules package-lock.json
-npm install
-```
-
-### API 连接问题
-
-**Q: 无法连接后端 API？**
-- 检查 `.env.local` 中的 `VITE_API_BASE_URL` 配置
-- 确认后端服务已启动
-- 检查浏览器控制台是否有 CORS 错误
-
-### 协作功能异常
-
-**Q: 无法看到其他协作者？**
-- 检查 WebSocket 连接状态
-- 确认所有用户都有编辑权限
-- 刷新页面重新建立连接
-
-### 性能优化建议
-
-- 大文件编辑时关闭实时预览
-- 定期清理版本历史
-- 使用代码片段减少重复输入
 
 ## 📄 许可证
 
