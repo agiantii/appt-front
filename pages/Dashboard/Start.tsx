@@ -446,7 +446,7 @@ const StartPage: React.FC = () => {
                     <div className="aspect-video bg-muted rounded-xl mb-4 overflow-hidden flex items-center justify-center relative">
                       {slide.previewUrl ? (
                         <img
-                          src={slide.previewUrl}
+                          src={slide.previewUrl || 'https://picsum.photos/seed/' + slide.id + '/400/250'}
                           alt={slide.title}
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                         />

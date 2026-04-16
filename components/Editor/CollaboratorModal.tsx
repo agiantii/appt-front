@@ -25,7 +25,9 @@ const ToastContainer: React.FC<{ toasts: Toast[]; onRemove: (id: number) => void
         <div
           key={toast.id}
           className={`flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg animate-in fade-in slide-in-from-right duration-200 ${
-            toast.type === 'success' ? 'bg-success/90 text-white' : 'bg-destructive/90 text-white'
+            toast.type === 'success'
+              ? 'bg-black dark:bg-white text-white dark:text-black border border-white/20 dark:border-black/20'
+              : 'bg-black dark:bg-white text-white dark:text-black border border-white/40 dark:border-black/40'
           }`}
         >
           {toast.type === 'success' ? <CheckCircle className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
@@ -223,54 +225,55 @@ export const CollaboratorModal: React.FC<CollaboratorModalProps> = ({
       onClose={onClose}
       title="Manage Collaborators"
       size="md"
+      theme="blackWhite"
     >
       <div className="space-y-4">
         {canManage && (
           <div className="flex gap-2">
             <div className="flex-1 relative">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-black dark:text-white" />
                 <input
                   type="text"
                   value={newUsername}
                   onChange={(e) => setNewUsername(e.target.value)}
                   placeholder="Search username..."
-                  className="w-full bg-[#0c0c0e] border border-white/10 rounded-lg pl-9 pr-3 py-2 text-sm text-white/90 placeholder:text-white/30 focus:outline-none focus:border-white/30"
+                  className="w-full bg-white dark:bg-black border border-black dark:border-white rounded-lg pl-9 pr-3 py-2 text-sm text-black dark:text-white placeholder:text-black/60 dark:placeholder:text-white/60 focus:outline-none focus:border-black dark:focus:border-white"
                 />
                 {searchLoading && (
                   <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                    <div className="w-4 h-4 border-2 border-white/20 border-t-white/60 rounded-full animate-spin" />
+                    <div className="w-4 h-4 border-2 border-black/20 dark:border-white/20 border-t-black/60 dark:border-t-white/60 rounded-full animate-spin" />
                   </div>
                 )}
               </div>
               {showSearchResults && searchResults.length > 0 && (
-                <div className="absolute top-full left-0 right-0 mt-1 bg-[#1c1c1f] border border-white/10 rounded-lg shadow-xl z-10 max-h-[200px] overflow-y-auto">
+                <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-black border border-black dark:border-white rounded-lg shadow-xl z-10 max-h-[200px] overflow-y-auto">
                   {searchResults.map((user) => (
                     <button
                       key={user.id}
                       onClick={() => handleSelectUser(user)}
-                      className="w-full flex items-center gap-3 px-3 py-2 hover:bg-white/5 transition-colors text-left"
+                      className="w-full flex items-center gap-3 px-3 py-2 hover:bg-black/5 dark:hover:bg-white/10 transition-colors text-left"
                     >
                       <img
                         src={user.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.username}`}
                         alt={user.username}
                         className="w-6 h-6 rounded-full"
                       />
-                      <span className="text-sm text-white/90">{user.username}</span>
+                      <span className="text-sm text-black dark:text-white">{user.username}</span>
                     </button>
                   ))}
                 </div>
               )}
               {showSearchResults && newUsername.trim() && searchResults.length === 0 && !searchLoading && (
-                <div className="absolute top-full left-0 right-0 mt-1 bg-[#1c1c1f] border border-white/10 rounded-lg shadow-xl z-10 px-3 py-2">
-                  <span className="text-sm text-white/40">No users found</span>
+                <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-black border border-black dark:border-white rounded-lg shadow-xl z-10 px-3 py-2">
+                  <span className="text-sm text-black/70 dark:text-white/70">No users found</span>
                 </div>
               )}
             </div>
             <select
               value={newRole}
               onChange={(e) => setNewRole(e.target.value as 'editor' | 'viewer' | 'commenter')}
-              className="bg-[#0c0c0e] border border-white/10 rounded-lg px-3 py-2 text-sm text-white/90 focus:outline-none focus:border-white/30"
+              className="bg-white dark:bg-black border border-black dark:border-white rounded-lg px-3 py-2 text-sm text-black dark:text-white focus:outline-none focus:border-black dark:focus:border-white"
             >
               <option value="viewer">Viewer</option>
               <option value="editor">Editor</option>
@@ -279,7 +282,7 @@ export const CollaboratorModal: React.FC<CollaboratorModalProps> = ({
             <button
               onClick={handleAddCollaborator}
               disabled={loading || !newUsername.trim()}
-              className="px-4 py-2 bg-white text-black rounded-lg text-sm font-medium hover:bg-white/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className="px-4 py-2 bg-black text-white rounded-lg text-sm font-medium hover:bg-black/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors dark:bg-white dark:text-black dark:hover:bg-white/90"
             >
               <UserPlus className="w-4 h-4" />
             </button>
@@ -291,7 +294,7 @@ export const CollaboratorModal: React.FC<CollaboratorModalProps> = ({
         <div className="space-y-2 max-h-[300px] overflow-y-auto">
           {/* Owner first */}
           {owner && (
-            <div className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
+            <div className="flex items-center justify-between p-3 bg-white dark:bg-black border border-black dark:border-white rounded-lg">
               <div className="flex items-center gap-3">
                 <img
                   src={owner.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${owner.username}`}
@@ -299,18 +302,18 @@ export const CollaboratorModal: React.FC<CollaboratorModalProps> = ({
                   className="w-8 h-8 rounded-full"
                 />
                 <div>
-                  <div className="text-sm font-medium text-white/90">{owner.username}</div>
-                  <div className="text-xs text-amber-400 capitalize">{owner.role}</div>
+                  <div className="text-sm font-medium text-black dark:text-white">{owner.username}</div>
+                  <div className="text-xs text-black/70 dark:text-white/70 capitalize">{owner.role}</div>
                 </div>
               </div>
-              <Shield className="w-4 h-4 text-amber-400" />
+              <Shield className="w-4 h-4 text-black dark:text-white" />
             </div>
           )}
           {/* Other collaborators */}
           {collaborators.filter(c => c.role !== 'owner').map((collab) => (
             <div
               key={collab.userId}
-              className="flex items-center justify-between p-3 bg-white/5 rounded-lg"
+              className="flex items-center justify-between p-3 bg-white dark:bg-black border border-black dark:border-white rounded-lg"
             >
               <div className="flex items-center gap-3">
                 <img
@@ -319,8 +322,8 @@ export const CollaboratorModal: React.FC<CollaboratorModalProps> = ({
                   className="w-8 h-8 rounded-full"
                 />
                 <div>
-                  <div className="text-sm font-medium text-white/90">{collab.username}</div>
-                  <div className="text-xs text-white/40 capitalize">{collab.role}</div>
+                  <div className="text-sm font-medium text-black dark:text-white">{collab.username}</div>
+                  <div className="text-xs text-black/70 dark:text-white/70 capitalize">{collab.role}</div>
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -329,7 +332,7 @@ export const CollaboratorModal: React.FC<CollaboratorModalProps> = ({
                     <select
                       value={collab.role}
                       onChange={(e) => handleUpdateRole(collab.userId, e.target.value)}
-                      className="bg-[#0c0c0e] border border-white/10 rounded px-2 py-1 text-xs text-white/90 focus:outline-none"
+                      className="bg-white dark:bg-black border border-black dark:border-white rounded px-2 py-1 text-xs text-black dark:text-white focus:outline-none focus:border-black dark:focus:border-white"
                     >
                       <option value="viewer">Viewer</option>
                       <option value="editor">Editor</option>
@@ -337,7 +340,7 @@ export const CollaboratorModal: React.FC<CollaboratorModalProps> = ({
                     </select>
                     <button
                       onClick={() => handleRemoveCollaborator(collab.userId)}
-                      className="p-1.5 hover:bg-red-500/20 rounded-lg text-white/40 hover:text-red-400 transition-colors"
+                      className="p-1.5 hover:bg-black/5 dark:hover:bg-white/10 rounded-lg text-black dark:text-white transition-colors"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>

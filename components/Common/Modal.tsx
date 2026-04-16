@@ -8,6 +8,7 @@ interface ModalProps {
   children: React.ReactNode;
   footer?: React.ReactNode;
   size?: 'sm' | 'md' | 'lg';
+  theme?: 'default' | 'blackWhite';
 }
 
 export const Modal: React.FC<ModalProps> = ({
@@ -16,7 +17,8 @@ export const Modal: React.FC<ModalProps> = ({
   title,
   children,
   footer,
-  size = 'md'
+  size = 'md',
+  theme = 'default'
 }) => {
   if (!isOpen) return null;
 
@@ -26,18 +28,37 @@ export const Modal: React.FC<ModalProps> = ({
     lg: 'w-[640px]'
   };
 
+  const isBlackWhite = theme === 'blackWhite';
+  const containerClasses = isBlackWhite
+    ? 'bg-white dark:bg-black border border-black/70 dark:border-white/70 rounded-2xl'
+    : 'bg-card border border-border rounded-2xl';
+
+  const headerBorderClasses = isBlackWhite
+    ? 'border-b border-black/40 dark:border-white/40'
+    : 'border-b border-border';
+
+  const footerBorderClasses = isBlackWhite
+    ? 'border-t border-black/40 dark:border-white/40'
+    : 'border-t border-border';
+
+  const titleClasses = isBlackWhite ? 'text-black dark:text-white' : 'text-foreground';
+
+  const closeButtonClasses = isBlackWhite
+    ? 'p-1.5 hover:bg-black/5 dark:hover:bg-white/10 rounded-lg text-black dark:text-white hover:text-black dark:hover:text-white transition-colors'
+    : 'p-1.5 hover:bg-accent rounded-lg text-muted-foreground hover:text-foreground transition-colors';
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div 
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm" 
+        className={`absolute inset-0 ${isBlackWhite ? 'bg-black/70' : 'bg-black/60'} backdrop-blur-sm`} 
         onClick={onClose}
       />
-      <div className={`relative ${sizeClasses[size]} bg-card border border-border rounded-2xl shadow-2xl animate-in fade-in zoom-in-95 duration-200`}>
-        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-          <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+      <div className={`relative ${sizeClasses[size]} ${containerClasses} shadow-2xl animate-in fade-in zoom-in-95 duration-200`}>
+        <div className={`flex items-center justify-between px-5 py-4 ${headerBorderClasses}`}>
+          <h3 className={`text-sm font-semibold ${titleClasses}`}>{title}</h3>
           <button 
             onClick={onClose}
-            className="p-1.5 hover:bg-accent rounded-lg text-muted-foreground hover:text-foreground transition-colors"
+            className={closeButtonClasses}
           >
             <X className="w-4 h-4" />
           </button>
@@ -46,7 +67,7 @@ export const Modal: React.FC<ModalProps> = ({
           {children}
         </div>
         {footer && (
-          <div className="flex items-center justify-end gap-3 px-5 py-4 border-t border-border">
+          <div className={`flex items-center justify-end gap-3 px-5 py-4 ${footerBorderClasses}`}>
             {footer}
           </div>
         )}
